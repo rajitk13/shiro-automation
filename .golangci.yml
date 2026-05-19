@@ -14,10 +14,6 @@ linters:
     - unused
     - gosimple
     - ineffassign
-    - deadcode
-    - varcheck
-    - structcheck
-    - misspell
     - unconvert
     - goconst
     - gocyclo
@@ -47,6 +43,36 @@ issues:
   exclude-use-default: false
   exclude-rules:
     - path: cmd/runtime/help.go
-      text: "redundant newline"
-    - path: cmd/runtime/help.go
-      text: "unknown escape sequence"
+      linters:
+        - govet
+        - staticcheck
+        - errcheck
+        - unused
+        - gosimple
+        - ineffassign
+        - unconvert
+        - goconst
+        - gocyclo
+        - dupl
+        - goimports
+        - misspell
+        - lll
+        - whitespace
+        - gocritic
+    - path: vendor/
+      linters:
+        - govet
+        - staticcheck
+        - errcheck
+        - unused
+        - gosimple
+        - ineffassign
+        - unconvert
+        - goconst
+        - gocyclo
+        - dupl
+        - goimports
+        - misspell
+        - lll
+        - whitespace
+        - gocritic
