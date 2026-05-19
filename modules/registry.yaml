@@ -1,0 +1,43 @@
+# Module Registry Configuration
+# This file lists all available modules and their configuration
+
+modules:
+  # Built-in modules (in-process)
+  slack:
+    name: "Slack Notifications"
+    type: "builtin"
+    description: "Send notifications to Slack channels"
+    version: "1.0.0"
+  
+  git:
+    name: "Git Operations"
+    type: "builtin"
+    description: "Perform Git operations (diff, clone, etc.)"
+    version: "1.0.0"
+  
+  print:
+    name: "Console Output"
+    type: "builtin"
+    description: "Print messages to console with different log levels"
+    version: "1.0.0"
+  
+  ai:
+    name: "AI Generation"
+    type: "builtin"
+    description: "Generate content using AI providers"
+    version: "1.0.0"
+
+  # HTTP modules (external services)
+  # Example configuration for external modules with load balancing:
+  # jira:
+  #   name: "Jira Integration"
+  #   type: "http"
+  #   endpoints:
+  #     - http://localhost:8082
+  #     - http://localhost:8083
+  #     - http://localhost:8084
+  #   config: "modules/jira/config.yaml"
+  #   version: "1.0.0"
+  #   description: "Integrate with Jira for issue tracking"
+  #   source: "github.com/your-org/jira-module"
+  #   docs: "https://github.com/your-org/jira-module/blob/main/README.md"

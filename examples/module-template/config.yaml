@@ -1,0 +1,26 @@
+# Module Configuration Template
+# Copy this file to your module directory and customize it
+
+name: "Your Module Name"
+version: "1.0.0"
+description: "Description of what your module does"
+
+api:
+  port: 8080
+  timeout: 30s
+
+# Module-specific configuration
+# These settings will be available in the module's config field
+settings:
+  # Example configuration options
+  # timeout: 30
+  # retries: 3
+
+# Authentication configuration
+auth:
+  type: "none"  # Options: none, api_key, oauth, basic
+  # For api_key:
+  # env_var: "YOUR_API_KEY"
+  # For oauth:
+  # client_id_env: "OAUTH_CLIENT_ID"
+  # client_secret_env: "OAUTH_CLIENT_SECRET"

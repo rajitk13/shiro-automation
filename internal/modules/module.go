@@ -33,14 +33,24 @@ type SchemaField struct {
 
 // Registry holds all registered modules
 type Registry struct {
-	modules map[string]Module
-	mu      sync.RWMutex
+	modules     map[string]Module
+	httpModules map[string]*HTTPModuleConfig
+	mu          sync.RWMutex
+}
+
+// HTTPModuleConfig represents configuration for an HTTP-based module
+type HTTPModuleConfig struct {
+	Name     string
+	Endpoint string
+	Config   map[string]interface{}
+	Metadata MetadataResponse
 }
 
 // NewRegistry creates a new module registry
 func NewRegistry() *Registry {
 	return &Registry{
-		modules: make(map[string]Module),
+		modules:     make(map[string]Module),
+		httpModules: make(map[string]*HTTPModuleConfig),
 	}
 }
 
@@ -75,9 +85,47 @@ func (r *Registry) List() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	types := make([]string, 0, len(r.modules))
+	types := make([]string, 0, len(r.modules)+len(r.httpModules))
 	for t := range r.modules {
 		types = append(types, t)
 	}
+	for t := range r.httpModules {
+		types = append(types, t)
+	}
 	return types
+}
+
+// RegisterHTTPModule registers an HTTP-based module
+func (r *Registry) RegisterHTTPModule(moduleType string, config *HTTPModuleConfig) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.httpModules[moduleType]; exists {
+		return fmt.Errorf("HTTP module type %s already registered", moduleType)
+	}
+
+	r.httpModules[moduleType] = config
+	return nil
+}
+
+// GetHTTPModule retrieves an HTTP module configuration by type
+func (r *Registry) GetHTTPModule(moduleType string) (*HTTPModuleConfig, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	config, exists := r.httpModules[moduleType]
+	if !exists {
+		return nil, fmt.Errorf("HTTP module type %s not found", moduleType)
+	}
+
+	return config, nil
+}
+
+// IsHTTPModule checks if a module type is HTTP-based
+func (r *Registry) IsHTTPModule(moduleType string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	_, exists := r.httpModules[moduleType]
+	return exists
 }
