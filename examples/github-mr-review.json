@@ -1,0 +1,44 @@
+{
+  "name": "github-pr-review",
+  "description": "AI-powered GitHub PR review workflow",
+  "inputs": {
+    "pr_number": "{{env.GITHUB_PR_NUMBER}}",
+    "repository": "{{env.GITHUB_REPOSITORY}}",
+    "owner": "{{env.GITHUB_REPOSITORY_OWNER}}"
+  },
+  "steps": [
+    {
+      "id": "get_diff",
+      "type": "git.diff",
+      "config": {
+        "operation": "diff",
+        "target": "HEAD"
+      }
+    },
+    {
+      "id": "review",
+      "type": "ai.generate",
+      "config": {
+        "provider": "ollama",
+        "model": "codellama:34b",
+        "prompt": "Review this git diff and provide feedback:\n\n{{steps.get_diff.diff}}\n\nFocus on:\n1. Code quality and best practices\n2. Potential bugs or issues\n3. Security concerns\n4. Performance implications\n\nProvide specific, actionable feedback.",
+        "system": "You are a senior code reviewer. Provide constructive, specific feedback on code changes.",
+        "temperature": 0.3,
+        "max_tokens": 2000
+      },
+      "depends_on": ["get_diff"]
+    },
+    {
+      "id": "notify",
+      "type": "slack.notify",
+      "config": {
+        "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
+        "channel": "#code-review",
+        "message": "PR Review for {{inputs.repository}} PR #{{inputs.pr_number}}:\n\n{{steps.review.content}}",
+        "username": "Code Review Bot",
+        "icon_emoji": ":robot_face:"
+      },
+      "depends_on": ["review"]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build Shiro
+        run: go build -o shiro ./cmd/runtime
+
+      - name: Run AI Review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: ./shiro -workflow examples/github-mr-review.json -config configs/models.yaml -state-store filesystem
+
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: shiro-results
+          path: .shiro/
+          retention-days: 1

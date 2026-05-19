@@ -1,0 +1,25 @@
+models:
+  # Ollama local models
+  codellama:
+    provider: ollama
+    model: codellama:34b
+    base_url: http://localhost:11434
+  
+  llama3:
+    provider: ollama
+    model: llama3:8b
+    base_url: http://localhost:11434
+  
+  # OpenAI-compatible providers
+  gpt-4:
+    provider: openai
+    model: gpt-4
+    base_url: https://api.openai.com/v1
+    api_key: "{{env.OPENAI_API_KEY}}"
+  
+  # Custom OpenAI-compatible endpoint (e.g., local LLM server)
+  custom-llm:
+    provider: openai
+    model: custom-model
+    base_url: http://localhost:8000/v1
+    api_key: "sk-custom-key"

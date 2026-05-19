@@ -1,0 +1,43 @@
+{
+  "name": "push-notification",
+  "description": "Send notification on push events",
+  "inputs": {
+    "project_id": "{{env.CI_PROJECT_ID}}",
+    "branch": "{{env.CI_COMMIT_REF_NAME}}"
+  },
+  "steps": [
+    {
+      "id": "get_changes",
+      "type": "git.diff",
+      "config": {
+        "operation": "get_changes",
+        "target": "HEAD"
+      }
+    },
+    {
+      "id": "summarize",
+      "type": "ai.generate",
+      "config": {
+        "provider": "ollama",
+        "model": "llama3:8b",
+        "prompt": "Summarize the changes in this push:\n\nFiles changed: {{steps.get_changes.files}}\n\nBranch: {{inputs.branch}}\n\nProvide a brief summary suitable for a team notification.",
+        "system": "You are a helpful assistant that summarizes code changes for team notifications.",
+        "temperature": 0.5,
+        "max_tokens": 500
+      },
+      "depends_on": ["get_changes"]
+    },
+    {
+      "id": "notify",
+      "type": "slack.notify",
+      "config": {
+        "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
+        "channel": "#deployments",
+        "message": "New push to {{inputs.branch}}:\n\n{{steps.summarize.content}}",
+        "username": "Push Bot",
+        "icon_emoji": ":rocket:"
+      },
+      "depends_on": ["summarize"]
+    }
+  ]
+}

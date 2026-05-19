@@ -1,0 +1,55 @@
+# Auto detect text files and perform LF normalization
+* text=auto eol=lf
+
+# Go source files
+*.go text diff=go
+*.go.tmpl text diff=go
+
+# Markdown files
+*.md text diff=markdown
+
+# YAML files
+*.yaml text
+*.yml text
+
+# JSON files
+*.json text
+
+# Shell scripts
+*.sh text eol=lf
+
+# Makefiles
+Makefile text eol=lf
+
+# Dockerfiles
+Dockerfile* text eol=lf
+
+# CI/CD files
+.gitlab-ci.yml text
+.github/** text
+
+# Config files
+*.conf text
+*.ini text
+*.toml text
+
+# Exclude generated files
+*.pb.go binary
+*.pb.go.meta binary
+
+# Exclude test binaries
+*.test binary
+
+# Exclude coverage files
+*.out binary
+coverage.out binary
+
+# Exclude compiled binaries
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+shiro binary
+shiro-runtime binary
+shiro-webhook binary
+webhook-server binary

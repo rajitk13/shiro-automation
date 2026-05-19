@@ -1,0 +1,57 @@
+stages:
+  - review
+  - test
+  - build
+
+# AI-powered MR review
+ai-mr-review:
+  stage: review
+  image: golang:1.21
+  before_script:
+    - apt-get update && apt-get install -y git
+    - go build -o shiro ./cmd/runtime
+  script:
+    - ./shiro -workflow examples/mr-review.json -config configs/models.yaml -state-store gitlab
+  artifacts:
+    paths:
+      - .shiro/
+    expire_in: 1 day
+  only:
+    - merge_requests
+
+# Push notification
+push-notification:
+  stage: review
+  image: golang:1.21
+  before_script:
+    - go build -o shiro ./cmd/runtime
+  script:
+    - ./shiro -workflow examples/push-notification.json -config configs/models.yaml
+  only:
+    - main
+    - master
+
+# Unit tests
+unit-tests:
+  stage: test
+  image: golang:1.21
+  script:
+    - go test -v -cover ./...
+  coverage: '/coverage: \d+.\d+% of statements/'
+
+# Build binaries
+build:
+  stage: build
+  image: golang:1.21
+  script:
+    - go build -o shiro-runtime ./cmd/runtime
+    - go build -o shiro-webhook ./cmd/webhook-server
+  artifacts:
+    paths:
+      - shiro-runtime
+      - shiro-webhook
+    expire_in: 1 week
+  only:
+    - main
+    - master
+    - tags
