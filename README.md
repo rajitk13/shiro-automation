@@ -121,27 +121,29 @@ shiro help
 
 ### Download Pre-built Binaries
 
-Pre-built binaries are available for multiple platforms. Download the latest version from:
+Pre-built binaries are available for multiple platforms. Download the latest version from GitHub releases:
 
 **Linux:**
-- Linux (AMD64): `shiro-linux-amd64`
-- Linux (ARM64): `shiro-linux-arm64`
+- Linux (AMD64): [shiro-linux-amd64](https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-amd64)
+- Linux (ARM64): [shiro-linux-arm64](https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-arm64)
 
 **macOS:**
-- macOS (Intel): `shiro-darwin-amd64`
-- macOS (Apple Silicon): `shiro-darwin-arm64`
+- macOS (Intel): [shiro-darwin-amd64](https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-darwin-amd64)
+- macOS (Apple Silicon): [shiro-darwin-arm64](https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-darwin-arm64)
 
 **Windows:**
-- Windows (AMD64): `shiro-windows-amd64.exe`
+- Windows (AMD64): [shiro-windows-amd64.exe](https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-windows-amd64.exe)
 
 Download the binary for your platform, make it executable (Linux/macOS), and run:
 
 ```bash
 # Linux/macOS
-chmod +x shiro-*
+curl -LO https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-<platform>
+chmod +x shiro-<platform>
 ./shiro-<platform> help
 
 # Windows
+curl -LO https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-windows-amd64.exe
 shiro-windows-amd64.exe help
 ```
 
@@ -156,8 +158,8 @@ This script automatically detects your platform and installs the correct binary.
 
 **Option 2: Download and install to PATH**
 ```bash
-# Download for your platform
-curl -LO https://gitlab.com/rajitk13/shiro-automation/-/jobs/artifacts/main/raw/dist/shiro-linux-amd64?job=build
+# Download for your platform (example for Linux AMD64)
+curl -LO https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-amd64
 
 # Make executable
 chmod +x shiro-linux-amd64
