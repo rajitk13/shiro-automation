@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/rkuthiala/shiro-automation/internal/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -82,7 +83,7 @@ func LoadModelConfig(configFile string) (map[string]map[string]interface{}, erro
 
 	data, err := os.ReadFile(configFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, errors.NewConfigError(configFile, "failed to read config file", err)
 	}
 
 	var config ModelConfig
@@ -91,10 +92,10 @@ func LoadModelConfig(configFile string) (map[string]map[string]interface{}, erro
 	ext := strings.ToLower(filepath.Ext(configFile))
 	if ext == ".yaml" || ext == ".yml" {
 		if err := yaml.Unmarshal(data, &config); err != nil {
-			return nil, fmt.Errorf("failed to parse YAML config file: %w", err)
+			return nil, errors.NewConfigError(configFile, "failed to parse YAML config file", err)
 		}
 	} else {
-		return nil, fmt.Errorf("unsupported config file format: %s", ext)
+		return nil, errors.NewConfigError(configFile, fmt.Sprintf("unsupported config file format: %s", ext), nil)
 	}
 
 	return config.Models, nil

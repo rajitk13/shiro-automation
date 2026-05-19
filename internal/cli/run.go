@@ -310,22 +310,35 @@ func outputResults(execCtx *workflow.ExecutionContext) {
 
 // printRunHelp prints help for the run command
 func printRunHelp() {
-	fmt.Println("Usage: shiro run [options]")
+	fmt.Println(`_____/\\\\\\\\\\\____/\\\________/\\\__/\\\\\\\\\\\____/\\\\\\\\\___________/\\\\\______        
+ ___/\\\/////////\\\_\/\\\_______\/\\\_\/////\\\///___/\\\///////\\\_______/\\\///\\\____       
+  __\//\\\______\///__\/\\\_______\/\\\_____\/\\\_____\/\\\_____\/\\\_____/\\\/__\///\\\__      
+   ___\////\\\_________\/\\\\\\\\\\\\\\\_____\/\\\_____\/\\\\\\\\\\\/_____/\\\______\//\\\_     
+    ______\////\\\______\/\\\/////////\\\_____\/\\\_____\/\\\//////\\\____\/\\\_______\/\\\_    
+     _________\////\\\___\/\\\_______\/\\\_____\/\\\_____\/\\\____\//\\\___\//\\\______/\\\__   
+      __/\\\______\//\\\__\/\\\_______\/\\\_____\/\\\_____\/\\\_____\//\\\___\///\\\__/\\\____  
+       _\///\\\\\\\\\\\/___\/\\\_______\/\\\__/\\\\\\\\\\\_\/\\\______\//\\\____\///\\\\\/_____ 
+        ___\///////////_____\///________\///__\///////////__\///________\///_______\/////_______`)
+	fmt.Println("Shiro - AI-Native CI Workflow Runtime")
+	fmt.Println()
+	fmt.Println("Created by: Rajit Kuthiala")
+	fmt.Println("https://www.linkedin.com/in/rajitkuthiala/")
+	fmt.Println()
+	fmt.Println("Usage:")
+	fmt.Println("  shiro run [options]")
+	fmt.Println("  shiro [options] (shorthand)")
 	fmt.Println()
 	fmt.Println("Options:")
-	fmt.Println("  -workflow string")
-	fmt.Println("        Path to workflow JSON file (auto-detected if not specified)")
-	fmt.Println("  -config string")
-	fmt.Println("        Path to model configuration file (auto-detected if not specified)")
-	fmt.Println("  -state-store string")
-	fmt.Println("        State store type (memory, filesystem, gitlab) (default \"gitlab\")")
-	fmt.Println("  -shiro-dir string")
-	fmt.Println("        Path to .shiro directory (default \".shiro\")")
-	fmt.Println("  -help")
-	fmt.Println("        Show help information")
+	fmt.Println("  -workflow <file>   Path to workflow JSON file (auto-detected if not specified)")
+	fmt.Println("  -config <file>     Path to model configuration file (auto-detected if not specified)")
+	fmt.Println("  -state-store <type> State store type: memory, filesystem, gitlab (default \"gitlab\")")
+	fmt.Println("  -shiro-dir <path>  Path to .shiro directory (default \".shiro\")")
+	fmt.Println("  -help              Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  shiro run")
-	fmt.Println("  shiro run -workflow examples/simple-test.json")
-	fmt.Println("  shiro run -config configs/models.yaml -state-store filesystem")
+	fmt.Println("  shiro run examples/print-example.json")
+	fmt.Println("  shiro run examples/mr-review.json -config configs/models.yaml")
+	fmt.Println("  shiro examples/github-mr-review.json -state-store filesystem")
+	fmt.Println()
+	fmt.Println("For more information, visit: https://github.com/rajitk13/shiro-automation")
 }

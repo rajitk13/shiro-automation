@@ -3,6 +3,8 @@ package workflow
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/rkuthiala/shiro-automation/internal/errors"
 )
 
 // Workflow represents a complete workflow definition
@@ -60,7 +62,7 @@ func NewExecutionContext() *ExecutionContext {
 func LoadWorkflow(data []byte) (*Workflow, error) {
 	var wf Workflow
 	if err := json.Unmarshal(data, &wf); err != nil {
-		return nil, fmt.Errorf("failed to parse workflow: %w", err)
+		return nil, errors.NewValidationError("workflow", "failed to parse workflow JSON", err)
 	}
 	return &wf, nil
 }
@@ -74,30 +76,30 @@ func LoadWorkflowFromFile(path string) (*Workflow, error) {
 // Validate performs basic validation on the workflow
 func (w *Workflow) Validate() error {
 	if w.Name == "" {
-		return fmt.Errorf("workflow name is required")
+		return errors.NewValidationError("name", "workflow name is required", nil)
 	}
 
 	if len(w.Steps) == 0 {
-		return fmt.Errorf("workflow must have at least one step")
+		return errors.NewValidationError("steps", "workflow must have at least one step", nil)
 	}
 
 	stepIDs := make(map[string]bool)
 	for i, step := range w.Steps {
 		if step.ID == "" {
-			return fmt.Errorf("step %d: ID is required", i)
+			return errors.NewValidationError(fmt.Sprintf("steps[%d].id", i), "step ID is required", nil)
 		}
 		if step.Type == "" {
-			return fmt.Errorf("step %s: type is required", step.ID)
+			return errors.NewValidationError(fmt.Sprintf("steps[%s].type", step.ID), "step type is required", nil)
 		}
 		if stepIDs[step.ID] {
-			return fmt.Errorf("duplicate step ID: %s", step.ID)
+			return errors.NewValidationError(fmt.Sprintf("steps[%s].id", step.ID), "duplicate step ID", nil)
 		}
 		stepIDs[step.ID] = true
 
 		// Validate dependencies
 		for _, dep := range step.DependsOn {
 			if !stepIDs[dep] {
-				return fmt.Errorf("step %s: depends on non-existent step %s", step.ID, dep)
+				return errors.NewValidationError(fmt.Sprintf("steps[%s].depends_on", step.ID), fmt.Sprintf("depends on non-existent step %s", dep), nil)
 			}
 		}
 	}

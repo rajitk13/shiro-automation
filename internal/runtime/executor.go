@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/rkuthiala/shiro-automation/internal/errors"
 	"github.com/rkuthiala/shiro-automation/internal/modules"
 	"github.com/rkuthiala/shiro-automation/internal/workflow"
 )
@@ -33,7 +34,7 @@ func (e *Executor) Execute(
 ) (*workflow.ExecutionContext, error) {
 	// Validate workflow
 	if err := wf.Validate(); err != nil {
-		return nil, fmt.Errorf("workflow validation failed: %w", err)
+		return nil, errors.NewWorkflowError(wf.Name, "", "workflow validation failed", err)
 	}
 
 	// Create execution context
@@ -46,26 +47,26 @@ func (e *Executor) Execute(
 	// Build execution graph
 	graph, err := buildExecutionGraph(wf.Steps)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build execution graph: %w", err)
+		return nil, errors.NewWorkflowError(wf.Name, "", "failed to build execution graph", err)
 	}
 
 	// Execute steps in topological order
 	for _, stepID := range graph.topologicalOrder() {
 		step := wf.GetStepByID(stepID)
 		if step == nil {
-			return nil, fmt.Errorf("step %s not found", stepID)
+			return nil, errors.NewWorkflowError(wf.Name, stepID, "step not found", nil)
 		}
 
 		// Check if dependencies are satisfied
 		if !graph.dependenciesSatisfied(stepID, execCtx.Steps) {
-			return nil, fmt.Errorf("dependencies not satisfied for step %s", stepID)
+			return nil, errors.NewWorkflowError(wf.Name, stepID, "dependencies not satisfied", nil)
 		}
 
 		// Execute the step
 		result, err := e.executeStep(ctx, execCtx, *step)
 		if err != nil {
 			e.logger.Printf("Step %s failed: %v", stepID, err)
-			return execCtx, fmt.Errorf("step %s failed: %w", stepID, err)
+			return execCtx, errors.NewWorkflowError(wf.Name, stepID, "step execution failed", err)
 		}
 
 		execCtx.Steps[stepID] = *result
@@ -90,13 +91,13 @@ func (e *Executor) executeStep(
 	resolver := workflow.NewVariableResolver(execCtx)
 	resolvedConfig, err := resolver.Resolve(step.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve variables: %w", err)
+		return nil, errors.NewWorkflowError("", step.ID, "failed to resolve variables", err)
 	}
 
 	// Convert to map[string]interface{}
 	config, ok := resolvedConfig.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("resolved config is not a map")
+		return nil, errors.NewWorkflowError("", step.ID, "resolved config is not a map", nil)
 	}
 
 	// Get module
@@ -189,5 +190,5 @@ func (e *Executor) executeWithRetry(
 		}
 	}
 
-	return nil, fmt.Errorf("after %d attempts: %w", maxAttempts, lastErr)
+	return nil, errors.NewWorkflowError("", step.ID, fmt.Sprintf("after %d attempts", maxAttempts), lastErr)
 }
