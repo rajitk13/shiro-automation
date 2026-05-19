@@ -1,0 +1,46 @@
+{
+  "name": "simple-test",
+  "description": "Simple test workflow using print module",
+  "steps": [
+    {
+      "id": "test_info",
+      "type": "print",
+      "config": {
+        "message": "Starting simple test workflow",
+        "level": "info"
+      }
+    },
+    {
+      "id": "test_debug",
+      "type": "print",
+      "config": {
+        "message": "Debug: Testing variable resolution",
+        "level": "debug"
+      }
+    },
+    {
+      "id": "test_warning",
+      "type": "print",
+      "config": {
+        "message": "Warning: This is a test warning",
+        "level": "warning"
+      }
+    },
+    {
+      "id": "test_json",
+      "type": "print",
+      "config": {
+        "message": "JSON test: variable resolution successful",
+        "level": "info"
+      }
+    },
+    {
+      "id": "test_complete",
+      "type": "print",
+      "config": {
+        "message": "Test workflow completed successfully!",
+        "level": "info"
+      }
+    }
+  ]
+}

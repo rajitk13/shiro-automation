@@ -25,9 +25,60 @@ Shiro is a production-ready Go-based workflow runtime that:
 
 ## Quick Start
 
+### Download Pre-built Binaries
+
+Pre-built binaries are available for multiple platforms. Download the latest version from:
+
+**Linux:**
+- Linux (AMD64): `shiro-linux-amd64`
+- Linux (ARM64): `shiro-linux-arm64`
+
+**macOS:**
+- macOS (Intel): `shiro-darwin-amd64`
+- macOS (Apple Silicon): `shiro-darwin-arm64`
+
+**Windows:**
+- Windows (AMD64): `shiro-windows-amd64.exe`
+
+Download the binary for your platform, make it executable (Linux/macOS), and run:
+
+```bash
+# Linux/macOS
+chmod +x shiro-*
+./shiro-<platform> help
+
+# Windows
+shiro-windows-amd64.exe help
+```
+
 ### Installation
 
-1. Build and install shiro to PATH:
+**Option 1: Auto-detect and install (Recommended)**
+```bash
+curl -sSL https://gitlab.com/rajitk13/shiro-automation/-/raw/main/scripts/install-auto.sh | bash
+```
+
+This script automatically detects your platform and installs the correct binary.
+
+**Option 2: Download and install to PATH**
+```bash
+# Download for your platform
+curl -LO https://gitlab.com/rajitk13/shiro-automation/-/jobs/artifacts/main/raw/dist/shiro-linux-amd64?job=build
+
+# Make executable
+chmod +x shiro-linux-amd64
+
+# Move to PATH
+sudo mv shiro-linux-amd64 /usr/local/bin/shiro
+```
+
+**Option 2: Build from source**
+```bash
+go build -o shiro ./cmd/runtime
+# Then use ./shiro or add to your PATH
+```
+
+**Option 3: Use the install script**
 ```bash
 make install
 # or
@@ -36,21 +87,18 @@ make install
 
 This installs `shiro` to `/usr/local/bin`, allowing you to run it from anywhere.
 
-2. Alternatively, build locally:
-```bash
-go build -o shiro ./cmd/runtime
-# Then use ./shiro or add to your PATH
-```
-
 ### CLI Mode
 
 After installation, run workflows from anywhere:
 
 ```bash
+# Simple test (no LLM required)
+shiro run examples/simple-test.json
+
 # Simple print example
 shiro run examples/print-example.json
 
-# AI PR review
+# AI PR review (requires LLM configuration)
 shiro run examples/mr-review.json
 
 # With custom config
@@ -60,7 +108,7 @@ shiro run examples/mr-review.json -config configs/models.yaml
 shiro run examples/github-mr-review.json -state-store filesystem
 
 # Shorthand (run is default)
-shiro examples/print-example.json
+shiro examples/simple-test.json
 ```
 
 3. View help:

@@ -4,6 +4,8 @@ on:
   push:
     branches: [ main, master ]
   pull_request:
+  release:
+    types: [ created ]
 
 jobs:
   lint:
@@ -48,3 +50,85 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.out
+
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build shiro
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          if [ "$GOOS" = "windows" ]; then
+            go build -o shiro-${{ matrix.goos }}-${{ matrix.goarch }}.exe ./cmd/runtime
+            go build -o webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}.exe ./cmd/webhook-server
+          else
+            go build -o shiro-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/runtime
+            go build -o webhook-server-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/webhook-server
+          fi
+
+      - name: Generate checksum
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            Get-FileHash shiro-${{ matrix.goos }}-${{ matrix.goarch }}.exe -Algorithm SHA256 | Select-Object -ExpandProperty Hash > shiro-${{ matrix.goos }}-${{ matrix.goarch }}.exe.sha256
+            Get-FileHash webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}.exe -Algorithm SHA256 | Select-Object -ExpandProperty Hash > webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}.exe.sha256
+          else
+            sha256sum shiro-${{ matrix.goos }}-${{ matrix.goarch }} > shiro-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+            sha256sum webhook-server-${{ matrix.goos }}-${{ matrix.goarch }} > webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shiro-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            shiro-${{ matrix.goos }}-${{ matrix.goarch }}*
+            webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}*
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [ lint, test, build ]
+    if: github.event_name == 'release' && github.event.action == 'created'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

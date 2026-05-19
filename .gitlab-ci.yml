@@ -2,6 +2,7 @@ stages:
   - review
   - test
   - build
+  - release
 
 # AI-powered MR review
 ai-mr-review:
@@ -11,7 +12,7 @@ ai-mr-review:
     - apt-get update && apt-get install -y git
     - go build -o shiro ./cmd/runtime
   script:
-    - ./shiro -workflow examples/mr-review.json -config configs/models.yaml -state-store gitlab
+    - ./shiro run examples/mr-review.json -config configs/models.yaml -state-store gitlab
   artifacts:
     paths:
       - .shiro/
@@ -26,7 +27,7 @@ push-notification:
   before_script:
     - go build -o shiro ./cmd/runtime
   script:
-    - ./shiro -workflow examples/push-notification.json -config configs/models.yaml
+    - ./shiro run examples/push-notification.json -config configs/models.yaml
   only:
     - main
     - master
@@ -39,19 +40,47 @@ unit-tests:
     - go test -v -cover ./...
   coverage: '/coverage: \d+.\d+% of statements/'
 
-# Build binaries
+# Build binaries for multiple platforms
 build:
   stage: build
   image: golang:1.21
   script:
-    - go build -o shiro-runtime ./cmd/runtime
-    - go build -o shiro-webhook ./cmd/webhook-server
+    - mkdir -p dist
+    - GOOS=linux GOARCH=amd64 go build -o dist/shiro-linux-amd64 ./cmd/runtime
+    - GOOS=linux GOARCH=arm64 go build -o dist/shiro-linux-arm64 ./cmd/runtime
+    - GOOS=darwin GOARCH=amd64 go build -o dist/shiro-darwin-amd64 ./cmd/runtime
+    - GOOS=darwin GOARCH=arm64 go build -o dist/shiro-darwin-arm64 ./cmd/runtime
+    - GOOS=windows GOARCH=amd64 go build -o dist/shiro-windows-amd64.exe ./cmd/runtime
+    - GOOS=linux GOARCH=amd64 go build -o dist/webhook-server-linux-amd64 ./cmd/webhook-server
+    - GOOS=darwin GOARCH=amd64 go build -o dist/webhook-server-darwin-amd64 ./cmd/webhook-server
+    - GOOS=windows GOARCH=amd64 go build -o dist/webhook-server-windows-amd64.exe ./cmd/webhook-server
+    - cd dist && for f in *; do sha256sum "$f" > "$f.sha256"; done
   artifacts:
     paths:
-      - shiro-runtime
-      - shiro-webhook
-    expire_in: 1 week
+      - dist/
+    expire_in: 30 days
   only:
     - main
     - master
+    - tags
+
+# Create GitLab release
+release:
+  stage: release
+  image: alpine:latest
+  script:
+    - apk add --no-cache curl
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        echo "Creating release for tag $CI_COMMIT_TAG"
+        # GitLab release creation would go here
+        # This requires proper GitLab API setup
+      else
+        echo "Skipping release - not a tag"
+      fi
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 90 days
+  only:
     - tags
