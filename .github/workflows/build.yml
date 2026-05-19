@@ -22,9 +22,9 @@ jobs:
           go-version: '1.21'
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.55.2
+          version: latest
 
       - name: Check commit messages
         uses: wagoid/commitlint-github-action@v5

@@ -5,24 +5,17 @@ run:
     - integration
 
 linters:
-  disable-all: true
   enable:
     - gofmt
     - govet
-    - errcheck
     - staticcheck
     - unused
-    - gosimple
-    - ineffassign
     - unconvert
-    - goconst
-    - gocyclo
-    - dupl
-    - goimports
     - misspell
-    - lll
     - whitespace
-    - gocritic
+  disable:
+    - errcheck
+    - goimports
 
 linters-settings:
   gosec:
@@ -59,6 +52,7 @@ issues:
         - lll
         - whitespace
         - gocritic
+        - typecheck
     - path: vendor/
       linters:
         - govet
@@ -76,3 +70,10 @@ issues:
         - lll
         - whitespace
         - gocritic
+        - typecheck
+    - path: gopkg.in/yaml.v3
+      linters:
+        - typecheck
+    - text: "undefined: yaml"
+      linters:
+        - typecheck

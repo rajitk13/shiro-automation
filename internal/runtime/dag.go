@@ -9,7 +9,7 @@ import (
 // executionGraph represents a DAG of workflow steps
 type executionGraph struct {
 	nodes map[string][]string // node -> dependencies
-	order []string             // topological order
+	order []string            // topological order
 }
 
 // buildExecutionGraph builds a DAG from workflow steps

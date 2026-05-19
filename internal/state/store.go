@@ -9,13 +9,13 @@ import (
 type StateStore interface {
 	// Save saves the workflow execution state
 	Save(ctx context.Context, key string, state interface{}) error
-	
+
 	// Load loads the workflow execution state
 	Load(ctx context.Context, key string, target interface{}) error
-	
+
 	// Delete deletes the workflow execution state
 	Delete(ctx context.Context, key string) error
-	
+
 	// Exists checks if a state exists
 	Exists(ctx context.Context, key string) (bool, error)
 }

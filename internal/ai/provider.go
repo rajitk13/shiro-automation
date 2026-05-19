@@ -8,10 +8,10 @@ import (
 type Provider interface {
 	// Generate generates a response from the AI model
 	Generate(ctx context.Context, req *GenerateRequest) (*GenerateResponse, error)
-	
+
 	// Stream generates a streaming response (optional)
 	Stream(ctx context.Context, req *GenerateRequest) (<-chan StreamChunk, error)
-	
+
 	// Close cleans up provider resources
 	Close() error
 }
@@ -29,16 +29,16 @@ type GenerateRequest struct {
 
 // Message represents a chat message
 type Message struct {
-	Role    string `json:"role"`    // system, user, assistant
+	Role    string `json:"role"` // system, user, assistant
 	Content string `json:"content"`
 }
 
 // GenerateResponse is the response from AI generation
 type GenerateResponse struct {
-	Content   string            `json:"content"`
-	FinishReason string         `json:"finish_reason"`
-	Usage     *Usage            `json:"usage,omitempty"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
+	Content      string            `json:"content"`
+	FinishReason string            `json:"finish_reason"`
+	Usage        *Usage            `json:"usage,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
 }
 
 // Usage represents token usage information
@@ -57,10 +57,10 @@ type StreamChunk struct {
 
 // ProviderConfig holds configuration for a provider
 type ProviderConfig struct {
-	Type     string            `json:"type"`     // ollama, openai, custom
-	BaseURL  string            `json:"base_url"`
-	APIKey   string            `json:"api_key,omitempty"`
-	Model    string            `json:"model"`
-	Headers  map[string]string `json:"headers,omitempty"`
-	Timeout  int               `json:"timeout"` // seconds
+	Type    string            `json:"type"` // ollama, openai, custom
+	BaseURL string            `json:"base_url"`
+	APIKey  string            `json:"api_key,omitempty"`
+	Model   string            `json:"model"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Timeout int               `json:"timeout"` // seconds
 }

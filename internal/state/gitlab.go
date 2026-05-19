@@ -9,10 +9,10 @@ import (
 
 // GitLabStore is a GitLab artifacts-based state store
 type GitLabStore struct {
-	projectID   string
-	jobID       string
-	token       string
-	baseURL     string
+	projectID    string
+	jobID        string
+	token        string
+	baseURL      string
 	artifactsDir string
 }
 
@@ -22,14 +22,14 @@ func NewGitLabStore(config map[string]interface{}) (*GitLabStore, error) {
 	if projectID == "" {
 		projectID = os.Getenv("CI_PROJECT_ID")
 	}
-	
+
 	jobID, _ := config["job_id"].(string)
 	if jobID == "" {
 		jobID = os.Getenv("CI_JOB_ID")
 	}
-	
+
 	token := os.Getenv("CI_JOB_TOKEN")
-	
+
 	baseURL, _ := config["base_url"].(string)
 	if baseURL == "" {
 		baseURL = os.Getenv("CI_SERVER_URL")
@@ -37,7 +37,7 @@ func NewGitLabStore(config map[string]interface{}) (*GitLabStore, error) {
 			baseURL = "https://gitlab.com"
 		}
 	}
-	
+
 	artifactsDir, _ := config["artifacts_dir"].(string)
 	if artifactsDir == "" {
 		artifactsDir = os.Getenv("CI_PROJECT_DIR")
@@ -99,7 +99,7 @@ func (s *GitLabStore) Delete(ctx context.Context, key string) error {
 func (s *GitLabStore) Exists(ctx context.Context, key string) (bool, error) {
 	stateDir := fmt.Sprintf("%s/.shiro/state", s.artifactsDir)
 	filePath := fmt.Sprintf("%s/%s.json", stateDir, key)
-	
+
 	_, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {

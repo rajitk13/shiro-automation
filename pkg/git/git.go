@@ -108,7 +108,7 @@ func (m *GitModule) getChanges(ctx context.Context, config map[string]interface{
 	}
 
 	files := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-	
+
 	// Filter empty strings
 	var changedFiles []string
 	for _, f := range files {

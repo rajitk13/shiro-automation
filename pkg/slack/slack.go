@@ -91,14 +91,14 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Slack API returned status %d: %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("slack API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	return map[string]interface{}{
-		"sent":     true,
-		"channel":  channel,
-		"message":  message,
-		"status":   "success",
+		"sent":    true,
+		"channel": channel,
+		"message": message,
+		"status":  "success",
 	}, nil
 }
 

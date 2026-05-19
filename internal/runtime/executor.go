@@ -25,7 +25,12 @@ func NewExecutor(registry *modules.Registry, logger *log.Logger) *Executor {
 }
 
 // Execute runs a workflow with the given inputs
-func (e *Executor) Execute(ctx context.Context, wf *workflow.Workflow, inputs map[string]interface{}, env map[string]string) (*workflow.ExecutionContext, error) {
+func (e *Executor) Execute(
+	ctx context.Context,
+	wf *workflow.Workflow,
+	inputs map[string]interface{},
+	env map[string]string,
+) (*workflow.ExecutionContext, error) {
 	// Validate workflow
 	if err := wf.Validate(); err != nil {
 		return nil, fmt.Errorf("workflow validation failed: %w", err)
@@ -76,7 +81,11 @@ func (e *Executor) Execute(ctx context.Context, wf *workflow.Workflow, inputs ma
 }
 
 // executeStep executes a single step with retry logic
-func (e *Executor) executeStep(ctx context.Context, execCtx *workflow.ExecutionContext, step workflow.Step) (*workflow.StepResult, error) {
+func (e *Executor) executeStep(
+	ctx context.Context,
+	execCtx *workflow.ExecutionContext,
+	step workflow.Step,
+) (*workflow.StepResult, error) {
 	// Resolve variables in step config
 	resolver := workflow.NewVariableResolver(execCtx)
 	resolvedConfig, err := resolver.Resolve(step.Config)
@@ -129,7 +138,14 @@ func (e *Executor) executeStep(ctx context.Context, execCtx *workflow.ExecutionC
 }
 
 // executeWithRetry executes a step with retry logic
-func (e *Executor) executeWithRetry(ctx context.Context, module modules.Module, execCtx *workflow.ExecutionContext, step workflow.Step, _ map[string]interface{}, retryConfig *workflow.RetryConfig) (map[string]interface{}, error) {
+func (e *Executor) executeWithRetry(
+	ctx context.Context,
+	module modules.Module,
+	execCtx *workflow.ExecutionContext,
+	step workflow.Step,
+	_ map[string]interface{},
+	retryConfig *workflow.RetryConfig,
+) (map[string]interface{}, error) {
 	maxAttempts := retryConfig.MaxAttempts
 	if maxAttempts <= 0 {
 		maxAttempts = 1

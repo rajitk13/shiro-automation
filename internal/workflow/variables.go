@@ -51,25 +51,25 @@ func (r *VariableResolver) Resolve(value interface{}) (interface{}, error) {
 func (r *VariableResolver) resolveString(s string) (string, error) {
 	// Pattern: {{variable.path}}
 	re := regexp.MustCompile(`\{\{([^}]+)\}\}`)
-	
+
 	var err error
 	result := re.ReplaceAllStringFunc(s, func(match string) string {
 		if err != nil {
 			return match
 		}
-		
+
 		// Extract the variable path without {{ }}
 		path := strings.TrimSpace(match[2 : len(match)-2])
-		
+
 		value, resolveErr := r.resolvePath(path)
 		if resolveErr != nil {
 			err = resolveErr
 			return match
 		}
-		
+
 		return fmt.Sprintf("%v", value)
 	})
-	
+
 	return result, err
 }
 
@@ -79,7 +79,7 @@ func (r *VariableResolver) resolvePath(path string) (interface{}, error) {
 	if len(parts) == 0 {
 		return nil, fmt.Errorf("empty variable path")
 	}
-	
+
 	switch parts[0] {
 	case "inputs":
 		return r.getMapValue(r.ctx.Inputs, parts[1:])
@@ -120,21 +120,21 @@ func (r *VariableResolver) getMapValue(m map[string]interface{}, parts []string)
 	if len(parts) == 0 {
 		return m, nil
 	}
-	
+
 	val, ok := m[parts[0]]
 	if !ok {
 		return nil, fmt.Errorf("key %s not found", parts[0])
 	}
-	
+
 	if len(parts) == 1 {
 		return val, nil
 	}
-	
+
 	// Handle nested maps
 	nextMap, ok := val.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("%s is not a map", parts[0])
 	}
-	
+
 	return r.getMapValue(nextMap, parts[1:])
 }
