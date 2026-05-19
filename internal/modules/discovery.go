@@ -42,7 +42,6 @@ type Discoverer struct {
 	registryPath string
 	registry     *RegistryConfig
 	httpClient   *HTTPModuleClient
-	lbClient     *LoadBalancedClient
 	mu           sync.RWMutex
 }
 

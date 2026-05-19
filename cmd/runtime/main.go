@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -59,30 +58,6 @@ func main() {
 		// Try to run as workflow if no recognized command
 		runWorkflow(os.Args[1:])
 	}
-}
-
-func buildShiro() {
-	fmt.Println("Building shiro...")
-	err := exec.Command("go", "build", "-o", "shiro", "./cmd/runtime").Run()
-	if err != nil {
-		log.Fatalf("Build failed: %v", err)
-	}
-	fmt.Println("Build complete: ./shiro")
-}
-
-func runTests() {
-	fmt.Println("Running tests...")
-	err := exec.Command("go", "test", "-v", "-cover", "./...").Run()
-	if err != nil {
-		log.Fatalf("Tests failed: %v", err)
-	}
-	fmt.Println("Tests passed")
-}
-
-func runHelloWorld() {
-	fmt.Println("Running Hello World test...")
-	// Run the simple-test workflow
-	runWorkflow([]string{"-workflow", "examples/simple-test.json"})
 }
 
 func runWorkflow(args []string) {
@@ -392,39 +367,6 @@ func outputResults(execCtx *workflow.ExecutionContext) {
 	}
 }
 
-func runModuleCommand(args []string) {
-	if len(args) < 1 {
-		printModuleHelp()
-		os.Exit(1)
-	}
-
-	subcommand := args[0]
-	subArgs := args[1:]
-
-	switch subcommand {
-	case "list":
-		listModules()
-	case "add":
-		addModule(subArgs)
-	case "remove":
-		removeModule(subArgs)
-	case "search":
-		searchModules(subArgs)
-	case "install":
-		installModule(subArgs)
-	case "info":
-		moduleInfo(subArgs)
-	case "docs":
-		moduleDocs(subArgs)
-	case "help", "-help", "--help":
-		printModuleHelp()
-	default:
-		fmt.Printf("Unknown module command: %s\n", subcommand)
-		printModuleHelp()
-		os.Exit(1)
-	}
-}
-
 func listModules() {
 	registryPath := "modules/registry.yaml"
 	discoverer := modules.NewDiscoverer(registryPath, nil)
@@ -692,28 +634,6 @@ models:
 	fmt.Println("  4. Run your workflow: shiro run")
 	fmt.Println()
 	fmt.Println("For more information: shiro help")
-}
-
-func printModuleHelp() {
-	fmt.Println("Module Management Commands:")
-	fmt.Println("  shiro module list              - List all available modules")
-	fmt.Println("  shiro module add [flags]       - Add a new module")
-	fmt.Println("    Flags:")
-	fmt.Println("      -name string              - Module name (required)")
-	fmt.Println("      -type string              - Module type (http or builtin)")
-	fmt.Println("      -endpoint string          - HTTP endpoint for http modules")
-	fmt.Println("      -endpoints strings        - Multiple HTTP endpoints for load balancing")
-	fmt.Println("      -config string            - Path to module config file")
-	fmt.Println("      -description string       - Module description")
-	fmt.Println("      -version string           - Module version")
-	fmt.Println("      -source string            - GitHub repository URL")
-	fmt.Println("      -docs string              - Documentation URL")
-	fmt.Println("  shiro module remove <name>     - Remove a module")
-	fmt.Println("  shiro module search <query>    - Search GitHub for modules")
-	fmt.Println("  shiro module install <repo>    - Install module from GitHub")
-	fmt.Println("  shiro module info <name>        - Show module information")
-	fmt.Println("  shiro module docs <name>        - Open module documentation")
-	fmt.Println("  shiro module help              - Show this help message")
 }
 
 func searchModules(args []string) {
