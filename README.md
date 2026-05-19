@@ -92,6 +92,9 @@ This installs `shiro` to `/usr/local/bin`, allowing you to run it from anywhere.
 After installation, run workflows from anywhere:
 
 ```bash
+# Quick test (hello world)
+shiro hello_world
+
 # Simple test (no LLM required)
 shiro run examples/simple-test.json
 

@@ -38,6 +38,8 @@ func main() {
 		buildShiro()
 	case "test":
 		runTests()
+	case "hello_world":
+		runHelloWorld()
 	case "run":
 		runWorkflow(args)
 	case "help", "-help", "--help":
@@ -64,6 +66,12 @@ func runTests() {
 		log.Fatalf("Tests failed: %v", err)
 	}
 	fmt.Println("Tests passed")
+}
+
+func runHelloWorld() {
+	fmt.Println("Running Hello World test...")
+	// Run the simple-test workflow
+	runWorkflow([]string{"-workflow", "examples/simple-test.json"})
 }
 
 func runWorkflow(args []string) {

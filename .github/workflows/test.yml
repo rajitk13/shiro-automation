@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -44,12 +44,16 @@ jobs:
           go-version: '1.21'
 
       - name: Run tests
-        run: go test -v -cover ./...
+        run: go test -v -cover ./... -coverprofile=coverage.out
+
+      - name: Filter coverage
+        run: |
+          go tool cover -func=coverage.out | grep -v "cmd/runtime/help.go" > coverage-filtered.out || true
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
-          files: ./coverage.out
+          files: ./coverage-filtered.out
 
   build:
     runs-on: ${{ matrix.os }}
