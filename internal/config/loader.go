@@ -1,0 +1,110 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Config represents the Shiro configuration
+type Config struct {
+	WorkflowFile string
+	ConfigFile   string
+	ShiroDir     string
+	StateStore   string
+}
+
+// ModelConfig represents AI model configuration
+type ModelConfig struct {
+	Models map[string]map[string]interface{} `json:"models" yaml:"models"`
+}
+
+// LoadConfig loads configuration with auto-detection
+func LoadConfig(shiroDir string) (*Config, error) {
+	cfg := &Config{
+		ShiroDir:   shiroDir,
+		StateStore: "gitlab", // Default state store
+	}
+
+	// Auto-detect workflow file
+	cfg.WorkflowFile = detectWorkflowFile(shiroDir)
+
+	// Auto-detect config file
+	cfg.ConfigFile = detectConfigFile(shiroDir)
+
+	return cfg, nil
+}
+
+// detectWorkflowFile finds the workflow file with priority order
+func detectWorkflowFile(shiroDir string) string {
+	// Priority: .shiro/workflow.json > .shiro/workflow.json (with custom dir) > workflow.json
+	paths := []string{
+		filepath.Join(shiroDir, "workflow.json"),
+		".shiro/workflow.json",
+		"workflow.json",
+	}
+
+	for _, path := range paths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+
+	return ""
+}
+
+// detectConfigFile finds the config file with priority order
+func detectConfigFile(shiroDir string) string {
+	// Priority: .shiro/config.yaml > .shiro/config.yaml (with custom dir) > configs/models.yaml
+	paths := []string{
+		filepath.Join(shiroDir, "config.yaml"),
+		".shiro/config.yaml",
+		"configs/models.yaml",
+	}
+
+	for _, path := range paths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+
+	return ""
+}
+
+// LoadModelConfig loads AI model configuration from a file
+func LoadModelConfig(configFile string) (map[string]map[string]interface{}, error) {
+	if configFile == "" {
+		return make(map[string]map[string]interface{}), nil
+	}
+
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var config ModelConfig
+
+	// Detect file format by extension
+	ext := strings.ToLower(filepath.Ext(configFile))
+	if ext == ".yaml" || ext == ".yml" {
+		if err := yaml.Unmarshal(data, &config); err != nil {
+			return nil, fmt.Errorf("failed to parse YAML config file: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("unsupported config file format: %s", ext)
+	}
+
+	return config.Models, nil
+}
+
+// GetRegistryPath returns the module registry path
+func GetRegistryPath(shiroDir string) string {
+	registryPath := filepath.Join(shiroDir, "modules", "registry.yaml")
+	if _, err := os.Stat(registryPath); err != nil {
+		return "modules/registry.yaml" // Fallback to default
+	}
+	return registryPath
+}
