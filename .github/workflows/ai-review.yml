@@ -28,7 +28,7 @@ jobs:
         run: ./shiro -workflow examples/github-mr-review.json -config configs/models.yaml -state-store filesystem
 
       - name: Upload results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: shiro-results
           path: .shiro/
