@@ -25,32 +25,47 @@ Shiro is a production-ready Go-based workflow runtime that:
 
 ## Quick Start
 
-### CLI Mode (GitHub Actions)
+### Installation
 
-1. Build the runtime:
+1. Build and install shiro to PATH:
+```bash
+make install
+# or
+./scripts/install.sh
+```
+
+This installs `shiro` to `/usr/local/bin`, allowing you to run it from anywhere.
+
+2. Alternatively, build locally:
 ```bash
 go build -o shiro ./cmd/runtime
+# Then use ./shiro or add to your PATH
 ```
 
-2. Create a workflow JSON file (see `examples/` directory)
+### CLI Mode
 
-3. Run the workflow:
+After installation, run workflows from anywhere:
+
 ```bash
-./shiro -workflow examples/github-mr-review.json -config configs/models.yaml
+# Simple print example
+shiro run examples/print-example.json
+
+# AI PR review
+shiro run examples/mr-review.json
+
+# With custom config
+shiro run examples/mr-review.json -config configs/models.yaml
+
+# With filesystem state store
+shiro run examples/github-mr-review.json -state-store filesystem
+
+# Shorthand (run is default)
+shiro examples/print-example.json
 ```
 
-### CLI Mode (GitLab CI Job)
-
-1. Build the runtime:
+3. View help:
 ```bash
-go build -o shiro ./cmd/runtime
-```
-
-2. Create a workflow JSON file (see `examples/` directory)
-
-3. Run the workflow:
-```bash
-./shiro -workflow examples/mr-review.json -config configs/models.yaml
+shiro help
 ```
 
 ### Webhook Mode
@@ -310,13 +325,13 @@ scripts/           # Development scripts
 
 ```bash
 # Build runtime
-go build -o shiro ./cmd/runtime
+shiro build
 
-# Build webhook server
-go build -o webhook-server ./cmd/webhook-server
+# Run tests
+shiro test
 
-# Build both
-go build ./...
+# Clean build artifacts
+rm -f shiro webhook-server
 ```
 
 ### Testing

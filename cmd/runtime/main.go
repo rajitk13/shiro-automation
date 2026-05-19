@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -24,14 +25,69 @@ import (
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		printHelp()
+		os.Exit(1)
+	}
+
+	command := os.Args[1]
+	args := os.Args[2:]
+
+	switch command {
+	case "build":
+		buildShiro()
+	case "test":
+		runTests()
+	case "run":
+		runWorkflow(args)
+	case "help", "-help", "--help":
+		printHelp()
+	default:
+		// Assume it's a workflow file (backward compatibility)
+		runWorkflow(os.Args[1:])
+	}
+}
+
+func buildShiro() {
+	fmt.Println("Building shiro...")
+	err := exec.Command("go", "build", "-o", "shiro", "./cmd/runtime").Run()
+	if err != nil {
+		log.Fatalf("Build failed: %v", err)
+	}
+	fmt.Println("Build complete: ./shiro")
+}
+
+func runTests() {
+	fmt.Println("Running tests...")
+	err := exec.Command("go", "test", "-v", "-cover", "./...").Run()
+	if err != nil {
+		log.Fatalf("Tests failed: %v", err)
+	}
+	fmt.Println("Tests passed")
+}
+
+func runWorkflow(args []string) {
 	// Parse flags
-	workflowFile := flag.String("workflow", "", "Path to workflow JSON file")
-	configFile := flag.String("config", "", "Path to model configuration file")
-	stateStoreType := flag.String("state-store", "gitlab", "State store type (memory, filesystem, gitlab)")
-	flag.Parse()
+	flagSet := flag.NewFlagSet("run", flag.ExitOnError)
+	workflowFile := flagSet.String("workflow", "", "Path to workflow JSON file")
+	configFile := flagSet.String("config", "configs/models.yaml", "Path to model configuration file")
+	stateStoreType := flagSet.String("state-store", "gitlab", "State store type (memory, filesystem, gitlab)")
+	showHelp := flagSet.Bool("help", false, "Show help information")
+	flagSet.Parse(args)
+
+	// If no workflow file specified via flag, use the first positional argument
+	if *workflowFile == "" && flagSet.NArg() > 0 {
+		*workflowFile = flagSet.Arg(0)
+	}
+
+	if *showHelp {
+		printRunHelp()
+		os.Exit(0)
+	}
 
 	if *workflowFile == "" {
-		log.Fatal("workflow file is required (use -workflow flag)")
+		printRunHelp()
+		os.Exit(1)
 	}
 
 	logger := log.New(os.Stdout, "[Shiro] ", log.LstdFlags)
