@@ -13,17 +13,111 @@ Shiro is a production-ready Go-based workflow runtime that:
 
 ## Features
 
+- **Simplified CLI**: Intuitive commands with auto-detection (`shiro init`, `shiro run`, `shiro add module`)
 - **Portable Runtime**: Single binary that runs in any CI environment
 - **DAG Execution**: Topological sorting with dependency management
-- **Module System**: Pluggable architecture for extensibility
+- **Module System**: Pluggable architecture with GitHub marketplace integration
+- **Auto-Discovery**: Search and install modules from official GitHub repository
 - **AI Providers**: Support for Ollama, OpenAI, and custom endpoints
 - **State Storage**: Modular backends (GitLab artifacts, filesystem, memory)
 - **GitLab Integration**: Both CI job and webhook-triggered modes
 - **GitHub Integration**: GitHub Actions workflows and webhook support
 - **Variable Resolution**: Template-based parameterization (inputs, env vars, step outputs)
 - **Retry Logic**: Configurable retry with exponential backoff
+- **.shiro Folder**: Organized project structure with auto-detection
 
 ## Quick Start
+
+### Initialize Your Project
+
+```bash
+# Initialize Shiro in your project (creates .shiro folder structure)
+shiro init
+```
+
+This creates:
+```
+.shiro/
+├── workflow.json          # Your workflow definition
+├── config.yaml           # AI model configuration
+├── modules/
+│   └── registry.yaml     # Module registry
+└── workflows/            # Additional workflows
+```
+
+### Run Workflows
+
+```bash
+# Run workflow (auto-detects .shiro/workflow.json)
+shiro run
+
+# Run specific workflow
+shiro run -workflow examples/simple-test.json
+
+# With custom config
+shiro run -config configs/models.yaml
+
+# With custom .shiro directory
+shiro run -shiro-dir /path/to/.shiro
+```
+
+### Module Management
+
+```bash
+# Add a module (auto-discovers from GitHub)
+shiro add module jira
+
+# Add module from GitHub URL
+shiro add module github.com/user/custom-module
+
+# Search for modules
+shiro search module slack
+
+# List installed modules
+shiro list modules
+
+# Remove a module
+shiro remove module jira
+
+# Get module information
+shiro info module jira
+
+# Open module documentation
+shiro docs module jira
+```
+
+### CLI Mode
+
+After installation, run workflows from anywhere:
+
+```bash
+# Quick test (hello world)
+shiro hello_world
+
+# Simple test (no LLM required)
+shiro run examples/simple-test.json
+
+# Simple print example
+shiro run examples/print-example.json
+
+# AI PR review (requires LLM configuration)
+shiro run examples/mr-review.json
+
+# With custom config
+shiro run examples/mr-review.json -config configs/models.yaml
+
+# With filesystem state store
+shiro run examples/github-mr-review.json -state-store filesystem
+
+# Shorthand (run is default)
+shiro examples/simple-test.json
+```
+
+### View Help
+
+```bash
+shiro help
+```
 
 ### Download Pre-built Binaries
 
@@ -72,13 +166,13 @@ chmod +x shiro-linux-amd64
 sudo mv shiro-linux-amd64 /usr/local/bin/shiro
 ```
 
-**Option 2: Build from source**
+**Option 3: Build from source**
 ```bash
 go build -o shiro ./cmd/runtime
 # Then use ./shiro or add to your PATH
 ```
 
-**Option 3: Use the install script**
+**Option 4: Use the install script**
 ```bash
 make install
 # or
@@ -87,37 +181,34 @@ make install
 
 This installs `shiro` to `/usr/local/bin`, allowing you to run it from anywhere.
 
-### CLI Mode
+## Simplified User Experience
 
-After installation, run workflows from anywhere:
+Shiro provides a streamlined developer experience with sensible defaults:
 
+### Before vs After
+
+**Before:**
 ```bash
-# Quick test (hello world)
-shiro hello_world
-
-# Simple test (no LLM required)
-shiro run examples/simple-test.json
-
-# Simple print example
-shiro run examples/print-example.json
-
-# AI PR review (requires LLM configuration)
-shiro run examples/mr-review.json
-
-# With custom config
-shiro run examples/mr-review.json -config configs/models.yaml
-
-# With filesystem state store
-shiro run examples/github-mr-review.json -state-store filesystem
-
-# Shorthand (run is default)
-shiro examples/simple-test.json
+shiro run -workflow examples/simple-test.json -config configs/models.yaml
+shiro module add -name jira -type http -endpoint http://localhost:8080
 ```
 
-3. View help:
+**After:**
 ```bash
-shiro help
+shiro init
+shiro run
+shiro add module jira
 ```
+
+### Key Improvements
+
+- **Auto-detection**: `shiro run` automatically finds `.shiro/workflow.json` and `.shiro/config.yaml`
+- **Intuitive Commands**: Natural language like `shiro add module jira` instead of complex flags
+- **GitHub Integration**: Auto-discover modules from official repository
+- **Organized Structure**: Everything in `.shiro/` folder with clear separation
+- **Quick Setup**: `shiro init` creates complete project structure in seconds
+
+For a complete customer journey guide, see [docs/CUSTOMER_JOURNEY.md](docs/CUSTOMER_JOURNEY.md).
 
 ### Webhook Mode
 
