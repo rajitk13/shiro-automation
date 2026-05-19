@@ -1,0 +1,50 @@
+{
+  "name": "print-example",
+  "description": "Example workflow demonstrating the print module",
+  "inputs": {
+    "message": "Hello from Shiro!"
+  },
+  "steps": [
+    {
+      "id": "print_basic",
+      "type": "print",
+      "config": {
+        "message": "Basic print: {{inputs.message}}",
+        "level": "info"
+      }
+    },
+    {
+      "id": "print_debug",
+      "type": "print",
+      "config": {
+        "message": "Debug message: This is a debug log",
+        "level": "debug"
+      }
+    },
+    {
+      "id": "print_warning",
+      "type": "print",
+      "config": {
+        "message": "Warning: This is a warning message",
+        "level": "warning"
+      }
+    },
+    {
+      "id": "print_error",
+      "type": "print",
+      "config": {
+        "message": "Error: This is an error message",
+        "level": "error"
+      }
+    },
+    {
+      "id": "print_json",
+      "type": "print",
+      "config": {
+        "message": "This will be formatted as JSON",
+        "level": "info",
+        "format": "json"
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+run:
+  timeout: 5m
+  tests: true
+  build-tags:
+    - integration
+
+linters:
+  disable-all: true
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - structcheck
+    - varcheck
+    - ineffassign
+    - deadcode
+    - typecheck
+    - gosec
+    - gocyclo
+    - dupl
+    - misspell
+    - gocritic
+    - goconst
+    - lll
+
+linters-settings:
+  gosec:
+    excludes:
+      - G104
+  gocyclo:
+    min-complexity: 15
+  lll:
+    line-length: 120
+  misspell:
+    locale: US
+  goimports:
+    local-prefixes: github.com/rkuthiala/shiro-automation
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-use-default: false

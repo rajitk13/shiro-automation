@@ -94,6 +94,33 @@ Workflows are defined in JSON:
 
 ## Available Modules
 
+### `print`
+Prints output to console with optional log levels and colors.
+
+**Config:**
+- `message` (required): Message to print
+- `level`: Log level (info, debug, error, warning), default: info
+- `format`: Output format (text, json), default: text
+
+**Log Level Colors:**
+- info: green
+- debug: gray
+- error: red
+- warning: yellow
+
+**Example:**
+```json
+{
+  "id": "log_output",
+  "type": "print",
+  "config": {
+    "message": "Step output: {{steps.review.content}}",
+    "level": "info",
+    "format": "text"
+  }
+}
+```
+
 ### `slack.notify`
 Sends notifications to Slack via webhooks.
 
@@ -273,8 +300,10 @@ pkg/
   slack/            # Slack module
   git/              # Git operations module
   ai/               # AI generation module
+  print/            # Console print module
 examples/           # Example workflows
 configs/            # Configuration templates
+scripts/           # Development scripts
 ```
 
 ### Building
@@ -298,6 +327,80 @@ go test ./...
 
 # Run tests with coverage
 go test -cover ./...
+```
+
+### Linting
+
+The project uses golangci-lint for Go code linting and pre-commit hooks for automated checks.
+
+#### Setup Development Environment
+
+```bash
+# Run the setup script
+./scripts/setup-dev.sh
+```
+
+This installs:
+- pre-commit (for pre-commit hooks)
+- golangci-lint (for Go linting)
+
+#### Manual Setup
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install pre-commit hooks
+pre-commit install
+
+# Install golangci-lint
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+```
+
+#### Run Linters
+
+```bash
+# Run pre-commit on all files
+pre-commit run --all-files
+
+# Run golangci-lint
+golangci-lint run
+```
+
+### Conventional Commits
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/) specification.
+
+#### Commit Message Format
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+#### Types
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code refactoring
+- `perf`: Performance improvements
+- `test`: Test additions or changes
+- `chore`: Build process or auxiliary tool changes
+- `ci`: CI/CD changes
+- `build`: Build system changes
+- `revert`: Revert a previous commit
+
+#### Examples
+
+```bash
+feat(ai): add OpenAI provider support
+fix(runtime): resolve variable resolution bug
+docs(readme): update installation instructions
 ```
 
 ## License

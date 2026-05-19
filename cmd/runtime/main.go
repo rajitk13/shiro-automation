@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/rkuthiala/shiro-automation/internal/github"
 	"github.com/rkuthiala/shiro-automation/internal/gitlab"
@@ -16,7 +18,9 @@ import (
 	"github.com/rkuthiala/shiro-automation/internal/workflow"
 	"github.com/rkuthiala/shiro-automation/pkg/ai"
 	"github.com/rkuthiala/shiro-automation/pkg/git"
+	printpkg "github.com/rkuthiala/shiro-automation/pkg/print"
 	"github.com/rkuthiala/shiro-automation/pkg/slack"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
@@ -65,6 +69,12 @@ func main() {
 	gitModule := git.NewGitModule()
 	if err := registry.Register("git.diff", gitModule); err != nil {
 		log.Fatalf("Failed to register Git module: %v", err)
+	}
+
+	// Register Print module
+	printModule := printpkg.NewPrintModule()
+	if err := registry.Register("print", printModule); err != nil {
+		log.Fatalf("Failed to register Print module: %v", err)
 	}
 
 	// Register AI module with providers
@@ -150,12 +160,21 @@ func loadModelConfig(configFile string) map[string]map[string]interface{} {
 	}
 
 	var config struct {
-		Models map[string]map[string]interface{} `json:"models"`
+		Models map[string]map[string]interface{} `json:"models" yaml:"models"`
 	}
 
-	if err := json.Unmarshal(data, &config); err != nil {
-		log.Printf("Failed to parse config file: %v", err)
-		return make(map[string]map[string]interface{})
+	// Detect file format by extension
+	ext := strings.ToLower(filepath.Ext(configFile))
+	if ext == ".yaml" || ext == ".yml" {
+		if err := yaml.Unmarshal(data, &config); err != nil {
+			log.Printf("Failed to parse YAML config file: %v", err)
+			return make(map[string]map[string]interface{})
+		}
+	} else {
+		if err := json.Unmarshal(data, &config); err != nil {
+			log.Printf("Failed to parse JSON config file: %v", err)
+			return make(map[string]map[string]interface{})
+		}
 	}
 
 	return config.Models

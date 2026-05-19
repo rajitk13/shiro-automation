@@ -59,11 +59,16 @@ func (e *Executor) Execute(ctx context.Context, wf *workflow.Workflow, inputs ma
 		// Execute the step
 		result, err := e.executeStep(ctx, execCtx, *step)
 		if err != nil {
+			e.logger.Printf("Step %s failed: %v", stepID, err)
 			return execCtx, fmt.Errorf("step %s failed: %w", stepID, err)
 		}
 
 		execCtx.Steps[stepID] = *result
-		e.logger.Printf("Step %s completed: %v", stepID, result.Success)
+		if !result.Success {
+			e.logger.Printf("Step %s failed: %s", stepID, result.Error)
+		} else {
+			e.logger.Printf("Step %s completed: %v", stepID, result.Success)
+		}
 	}
 
 	e.logger.Printf("Workflow %s completed successfully", wf.Name)
