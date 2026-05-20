@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -246,5 +247,31 @@ func (d *Discoverer) LoadModuleConfig(configPath string) (map[string]interface{}
 		return nil, fmt.Errorf("failed to parse module config: %w", err)
 	}
 
+	// Resolve environment variables in config
+	resolveEnvVarsInMap(config)
+
 	return config, nil
+}
+
+// resolveEnvVarsInMap resolves {{env.VARIABLE}} templates in a map
+func resolveEnvVarsInMap(config map[string]interface{}) {
+	for key, value := range config {
+		if strValue, ok := value.(string); ok {
+			config[key] = resolveEnvVarStringInModules(strValue)
+		} else if nestedMap, ok := value.(map[string]interface{}); ok {
+			resolveEnvVarsInMap(nestedMap)
+		}
+	}
+}
+
+// resolveEnvVarStringInModules resolves a single {{env.VARIABLE}} template
+func resolveEnvVarStringInModules(input string) string {
+	if strings.HasPrefix(input, "{{env.") && strings.HasSuffix(input, "}}") {
+		envVar := strings.TrimPrefix(input, "{{env.")
+		envVar = strings.TrimSuffix(envVar, "}}")
+		if envValue := os.Getenv(envVar); envValue != "" {
+			return envValue
+		}
+	}
+	return input
 }

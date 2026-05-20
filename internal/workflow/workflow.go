@@ -3,6 +3,8 @@ package workflow
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/rkuthiala/shiro-automation/internal/errors"
 )
@@ -64,6 +66,10 @@ func LoadWorkflow(data []byte) (*Workflow, error) {
 	if err := json.Unmarshal(data, &wf); err != nil {
 		return nil, errors.NewValidationError("workflow", "failed to parse workflow JSON", err)
 	}
+
+	// Resolve environment variables in workflow
+	resolveEnvVars(&wf)
+
 	return &wf, nil
 }
 
@@ -115,4 +121,37 @@ func (w *Workflow) GetStepByID(id string) *Step {
 		}
 	}
 	return nil
+}
+
+// resolveEnvVars resolves {{env.VARIABLE}} templates in workflow
+func resolveEnvVars(wf *Workflow) {
+	// Resolve in inputs
+	for key, value := range wf.Inputs {
+		if strValue, ok := value.(string); ok {
+			wf.Inputs[key] = resolveEnvVarString(strValue)
+		}
+	}
+
+	// Resolve in step configs
+	for _, step := range wf.Steps {
+		if step.Config != nil {
+			for key, value := range step.Config {
+				if strValue, ok := value.(string); ok {
+					step.Config[key] = resolveEnvVarString(strValue)
+				}
+			}
+		}
+	}
+}
+
+// resolveEnvVarString resolves a single {{env.VARIABLE}} template
+func resolveEnvVarString(input string) string {
+	if strings.HasPrefix(input, "{{env.") && strings.HasSuffix(input, "}}") {
+		envVar := strings.TrimPrefix(input, "{{env.")
+		envVar = strings.TrimSuffix(envVar, "}}")
+		if envValue := os.Getenv(envVar); envValue != "" {
+			return envValue
+		}
+	}
+	return input
 }

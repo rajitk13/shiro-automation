@@ -110,6 +110,10 @@ func resolveEnvVars(config map[string]map[string]interface{}) {
 		for key, value := range modelDef {
 			if strValue, ok := value.(string); ok {
 				resolved := resolveEnvVarString(strValue)
+				if resolved != strValue {
+					// Log that environment variable was resolved
+					fmt.Printf("[Config] Resolved env var in config: %s\n", key)
+				}
 				modelDef[key] = resolved
 			}
 		}
@@ -121,9 +125,12 @@ func resolveEnvVarString(input string) string {
 	if strings.HasPrefix(input, "{{env.") && strings.HasSuffix(input, "}}") {
 		envVar := strings.TrimPrefix(input, "{{env.")
 		envVar = strings.TrimSuffix(envVar, "}}")
-		if envValue := os.Getenv(envVar); envValue != "" {
+		envValue := os.Getenv(envVar)
+		if envValue != "" {
+			fmt.Printf("[Config] Resolved %s = %s\n", envVar, "***")
 			return envValue
 		}
+		fmt.Printf("[Config] Environment variable %s not found\n", envVar)
 	}
 	return input
 }
