@@ -11,11 +11,11 @@ import (
 func InitCommand(args []string) {
 	fmt.Println("Initializing Shiro project...")
 
-	// Create .shiro directory structure
+	// Create .shiro and modules directory structure
 	dirs := []string{
 		".shiro",
-		".shiro/modules",
 		".shiro/workflows",
+		"modules",
 	}
 
 	for _, dir := range dirs {
@@ -49,17 +49,26 @@ func InitCommand(args []string) {
 	// Create example config.yaml
 	configContent := `# Shiro configuration
 # This file configures AI models and other settings
+# Environment variables can be used with {{env.VARIABLE_NAME}} syntax
 
 models:
-  # Example AI model configuration
+  # Example AI model configuration with environment variables
+  # openai-custom:
+  #   type: openai
+  #   model: "gpt-4"
+  #   base_url: "{{env.OPENAI_BASE_URL}}"
+  #   api_key: "{{env.OPENAI_API_KEY}}"
+  
   # ollama:
   #   type: ollama
+  #   model: "codellama:34b"
   #   base_url: "http://localhost:11434"
   
   # openai:
   #   type: openai
+  #   model: "gpt-4"
   #   base_url: "https://api.openai.com/v1"
-  #   api_key: "your-api-key"`
+  #   api_key: "{{env.OPENAI_API_KEY}}"`
 
 	if err := os.WriteFile(".shiro/config.yaml", []byte(configContent), 0644); err != nil {
 		log.Fatalf("Failed to create config.yaml: %v", err)
@@ -101,10 +110,10 @@ models:
   #   source: "github.com/your-org/jira-module"
   #   docs: "https://github.com/your-org/jira-module/blob/main/README.md"`
 
-	if err := os.WriteFile(".shiro/modules/registry.yaml", []byte(registryContent), 0644); err != nil {
+	if err := os.WriteFile("modules/registry.yaml", []byte(registryContent), 0644); err != nil {
 		log.Fatalf("Failed to create modules/registry.yaml: %v", err)
 	}
-	fmt.Println("Created file: .shiro/modules/registry.yaml")
+	fmt.Println("Created file: modules/registry.yaml")
 
 	// Create .gitignore entry
 	gitignorePath := ".gitignore"

@@ -330,17 +330,52 @@ Configure AI providers in YAML:
 
 ```yaml
 models:
+  # Ollama local models
   codellama:
-    provider: ollama
+    type: ollama
     model: codellama:34b
     base_url: http://localhost:11434
-  
+
+  # OpenAI-compatible providers
   gpt-4:
-    provider: openai
+    type: openai
     model: gpt-4
     base_url: https://api.openai.com/v1
     api_key: "{{env.OPENAI_API_KEY}}"
+
+  # Custom OpenAI-compatible endpoint (e.g., local LLM server)
+  custom-llm:
+    type: openai
+    model: custom-model
+    base_url: http://localhost:8000/v1
+    api_key: "sk-custom-key"
+
+  # OpenAI Custom with environment variables
+  openai-custom:
+    type: openai
+    model: "{{env.OPENAI_CUSTOM_MODEL}}"
+    base_url: "{{env.OPENAI_CUSTOM_BASE_URL}}"
+    api_key: "{{env.OPENAI_CUSTOM_API_KEY}}"
 ```
+
+### Environment Variable Resolution
+
+Shiro supports environment variable resolution in configuration files using the `{{env.VARIABLE_NAME}}` syntax. This is particularly useful for sensitive data like API keys and base URLs that shouldn't be hardcoded in your repository.
+
+**Example:**
+```yaml
+models:
+  openai-custom:
+    type: openai
+    model: "{{env.OPENAI_CUSTOM_MODEL}}"
+    base_url: "{{env.OPENAI_CUSTOM_BASE_URL}}"
+    api_key: "{{env.OPENAI_CUSTOM_API_KEY}}"
+```
+
+**Usage in CI/CD:**
+- Set environment variables in your CI/CD pipeline (GitLab CI/CD variables, GitHub Secrets, etc.)
+- Shiro will automatically resolve them at runtime
+- If an environment variable is not set, the literal string will be used
 
 ## GitHub Actions Integration
 
