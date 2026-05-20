@@ -70,7 +70,7 @@ func TestWorkflowValidate(t *testing.T) {
 		{
 			name: "no steps",
 			wf: &workflow.Workflow{
-				Name: "test",
+				Name:  "test",
 				Steps: []workflow.Step{},
 			},
 			wantErr: true,
