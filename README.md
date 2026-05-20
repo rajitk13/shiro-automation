@@ -495,9 +495,19 @@ The project uses golangci-lint for Go code linting and pre-commit hooks for auto
 #### Setup Development Environment
 
 ```bash
-# Run the setup script
-./scripts/setup-dev.sh
+# Run the setup script (recommended)
+./setup.sh
+
+# Or manually configure Git hooks
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-commit
 ```
+
+The setup script configures:
+- Git hooks path to use `.githooks/` directory
+- Pre-commit hook for automatic formatting, linting, and testing checks
+
+#### Manual Setup
 
 This installs:
 - pre-commit (for pre-commit hooks)

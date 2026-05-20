@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Run gofmt
+UNFORMATTED=$(gofmt -l . | grep -v vendor/ | grep -v ".git")
+if [ -n "$UNFORMATTED" ]; then
+    echo "Error: Code is not formatted. Run 'gofmt -w .'"
+    echo "Files that need formatting:"
+    echo "$UNFORMATTED"
+    exit 1
+fi
+
+# Run go vet
+go vet ./... || {
+    echo "Error: go vet failed"
+    exit 1
+}
+
+# Run tests
+go test ./... || {
+    echo "Error: tests failed"
+    exit 1
+}
+
+exit 0
