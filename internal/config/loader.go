@@ -98,7 +98,34 @@ func LoadModelConfig(configFile string) (map[string]map[string]interface{}, erro
 		return nil, errors.NewConfigError(configFile, fmt.Sprintf("unsupported config file format: %s", ext), nil)
 	}
 
+	// Resolve environment variables in config
+	resolveEnvVars(config.Models)
+
 	return config.Models, nil
+}
+
+// resolveEnvVars resolves {{env.VARIABLE}} templates in config values
+func resolveEnvVars(config map[string]map[string]interface{}) {
+	for _, modelDef := range config {
+		for key, value := range modelDef {
+			if strValue, ok := value.(string); ok {
+				resolved := resolveEnvVarString(strValue)
+				modelDef[key] = resolved
+			}
+		}
+	}
+}
+
+// resolveEnvVarString resolves a single {{env.VARIABLE}} template
+func resolveEnvVarString(input string) string {
+	if strings.HasPrefix(input, "{{env.") && strings.HasSuffix(input, "}}") {
+		envVar := strings.TrimPrefix(input, "{{env.")
+		envVar = strings.TrimSuffix(envVar, "}}")
+		if envValue := os.Getenv(envVar); envValue != "" {
+			return envValue
+		}
+	}
+	return input
 }
 
 // GetRegistryPath returns the module registry path
