@@ -168,7 +168,8 @@ func RunCommand(args []string) {
 // registerBuiltInModules registers the built-in modules
 func registerBuiltInModules(registry *modules.Registry) error {
 	// Register Slack module
-	slackModule := slack.NewSlackModule()
+	skipTLSVerify := os.Getenv("SHIRO_SKIP_TLS_VERIFY") == "true"
+	slackModule := slack.NewSlackModule(skipTLSVerify)
 	if err := registry.Register("slack.notify", slackModule); err != nil {
 		return err
 	}
@@ -228,11 +229,16 @@ func registerAIProviders(modelConfig map[string]map[string]interface{}, logger *
 				logger.Printf("Skipping model %s: missing api_key field", modelName)
 				continue
 			}
+			skipTLSVerify := false
+			if skipTLS, ok := modelDef["skip_tls_verify"].(bool); ok {
+				skipTLSVerify = skipTLS
+			}
 			providerConfig := &ai.ProviderConfig{
-				Type:    "openai",
-				BaseURL: baseURL,
-				APIKey:  apiKey,
-				Model:   modelName,
+				Type:          "openai",
+				BaseURL:       baseURL,
+				APIKey:        apiKey,
+				Model:         modelName,
+				SkipTLSVerify: skipTLSVerify,
 			}
 			provider, err = ai.NewOpenAIProvider(providerConfig)
 		default:

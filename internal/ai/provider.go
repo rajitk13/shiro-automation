@@ -57,10 +57,11 @@ type StreamChunk struct {
 
 // ProviderConfig holds configuration for a provider
 type ProviderConfig struct {
-	Type    string            `json:"type"` // ollama, openai, custom
-	BaseURL string            `json:"base_url"`
-	APIKey  string            `json:"api_key,omitempty"`
-	Model   string            `json:"model"`
-	Headers map[string]string `json:"headers,omitempty"`
-	Timeout int               `json:"timeout"` // seconds
+	Type          string            `json:"type"` // ollama, openai, custom
+	BaseURL       string            `json:"base_url"`
+	APIKey        string            `json:"api_key,omitempty"`
+	Model         string            `json:"model"`
+	Headers       map[string]string `json:"headers,omitempty"`
+	Timeout       int               `json:"timeout"`                   // seconds
+	SkipTLSVerify bool              `json:"skip_tls_verify,omitempty"` // Skip TLS verification for self-signed certs
 }

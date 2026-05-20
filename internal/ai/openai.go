@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,10 +34,17 @@ func NewOpenAIProvider(config *ProviderConfig) (*OpenAIProvider, error) {
 		timeout = 30 * time.Second
 	}
 
+	// Create HTTP client with optional TLS skip
+	transport := &http.Transport{}
+	if config.SkipTLSVerify {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	return &OpenAIProvider{
 		config: config,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			Timeout:   timeout,
+			Transport: transport,
 		},
 	}, nil
 }

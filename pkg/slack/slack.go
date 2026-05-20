@@ -3,6 +3,7 @@ package slack
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,10 +20,16 @@ type SlackModule struct {
 }
 
 // NewSlackModule creates a new Slack module
-func NewSlackModule() *SlackModule {
+func NewSlackModule(skipTLSVerify bool) *SlackModule {
+	transport := &http.Transport{}
+	if skipTLSVerify {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	return &SlackModule{
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: transport,
 		},
 	}
 }
