@@ -65,6 +65,79 @@ func GetBranch() string {
 	return os.Getenv("CI_COMMIT_REF_NAME")
 }
 
+// IsInMR returns true if running in a merge request pipeline
+func IsInMR() bool {
+	return os.Getenv("CI_MERGE_REQUEST_IID") != ""
+}
+
+// CheckMRApproval checks if an MR has required approvals
+func (c *Client) CheckMRApproval(ctx context.Context, projectID, mrIID string, requiredApprovals int) (bool, error) {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/approvals", c.baseURL, projectID, mrIID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return false, err
+	}
+
+	req.Header.Set("JOB-TOKEN", c.token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("GitLab API returned status %d", resp.StatusCode)
+	}
+
+	var approvalData struct {
+		ApprovedBy []struct {
+			ID int `json:"id"`
+		} `json:"approved_by"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&approvalData); err != nil {
+		return false, err
+	}
+
+	return len(approvalData.ApprovedBy) >= requiredApprovals, nil
+}
+
+// GetApprovalCount returns the number of approvals for an MR
+func (c *Client) GetApprovalCount(ctx context.Context, projectID, mrIID string) (int, error) {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/approvals", c.baseURL, projectID, mrIID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.Header.Set("JOB-TOKEN", c.token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("GitLab API returned status %d", resp.StatusCode)
+	}
+
+	var approvalData struct {
+		ApprovedBy []struct {
+			ID int `json:"id"`
+		} `json:"approved_by"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&approvalData); err != nil {
+		return 0, err
+	}
+
+	return len(approvalData.ApprovedBy), nil
+}
+
 // GetDiff gets the diff for a merge request
 func (c *Client) GetDiff(ctx context.Context, projectID, mrIID string) (string, error) {
 	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, projectID, mrIID)

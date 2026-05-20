@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/rkuthiala/shiro-automation/internal/modules"
@@ -50,6 +51,12 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 	username, _ := wfStep.Config["username"].(string)
 	iconEmoji, _ := wfStep.Config["icon_emoji"].(string)
 
+	// Check if this is an interactive approval
+	isApproval := false
+	if wfStep.Approval != nil {
+		isApproval = true
+	}
+
 	// Build Slack message
 	slackMsg := map[string]interface{}{
 		"text": message,
@@ -68,6 +75,49 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 	// Add attachments if provided
 	if attachments, ok := wfStep.Config["attachments"].([]interface{}); ok {
 		slackMsg["attachments"] = attachments
+	}
+
+	// Add interactive buttons for approval
+	if isApproval {
+		approvalURL, _ := wfStep.Config["approval_url"].(string)
+		if approvalURL == "" {
+			// Check environment variable first
+			approvalURL = os.Getenv("SHIRO_APPROVAL_WEBHOOK_URL")
+			if approvalURL == "" {
+				// For CI/CD, use GitLab MR URL instead of webhook
+				mrURL := os.Getenv("CI_MERGE_REQUEST_URL")
+				if mrURL != "" {
+					approvalURL = mrURL + "/approvals"
+				} else {
+					approvalURL = "http://localhost:8080/approve" // Default for local dev
+				}
+			}
+		}
+		approvalID := wfStep.Approval.ApprovalID
+
+		approvalAttachment := map[string]interface{}{
+			"text": "Please approve or reject this request",
+			"actions": []map[string]interface{}{
+				{
+					"type":  "button",
+					"text":  "Approve",
+					"style": "primary",
+					"url":   fmt.Sprintf("%s?approval_id=%s&decision=approved", approvalURL, approvalID),
+				},
+				{
+					"type":  "button",
+					"text":  "Reject",
+					"style": "danger",
+					"url":   fmt.Sprintf("%s?approval_id=%s&decision=rejected", approvalURL, approvalID),
+				},
+			},
+		}
+
+		if slackMsg["attachments"] == nil {
+			slackMsg["attachments"] = []interface{}{approvalAttachment}
+		} else {
+			slackMsg["attachments"] = append(slackMsg["attachments"].([]interface{}), approvalAttachment)
+		}
 	}
 
 	// Send to Slack
@@ -94,12 +144,19 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 		return nil, fmt.Errorf("slack API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"sent":    true,
 		"channel": channel,
 		"message": message,
 		"status":  "success",
-	}, nil
+	}
+
+	if isApproval {
+		result["approval_id"] = wfStep.Approval.ApprovalID
+		result["is_approval"] = true
+	}
+
+	return result, nil
 }
 
 // Metadata returns module metadata
@@ -138,6 +195,11 @@ func (m *SlackModule) Metadata() modules.ModuleMetadata {
 			"attachments": {
 				Type:        "array",
 				Description: "Slack message attachments",
+				Required:    false,
+			},
+			"approval_url": {
+				Type:        "string",
+				Description: "URL for approval webhook",
 				Required:    false,
 			},
 		},

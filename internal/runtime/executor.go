@@ -62,6 +62,24 @@ func (e *Executor) Execute(
 			return nil, errors.NewWorkflowError(wf.Name, stepID, "dependencies not satisfied", nil)
 		}
 
+		// Check conditional execution
+		if step.When != "" {
+			shouldExecute, err := e.evaluateCondition(step.When, execCtx)
+			if err != nil {
+				e.logger.Printf("Failed to evaluate condition for step %s: %v", stepID, err)
+				return nil, errors.NewWorkflowError(wf.Name, stepID, "failed to evaluate condition", err)
+			}
+			if !shouldExecute {
+				e.logger.Printf("Skipping step %s (condition not met)", stepID)
+				continue
+			}
+		}
+
+		// Check if this is an approval step
+		if step.Approval != nil {
+			return e.handleApprovalStep(ctx, execCtx, wf, *step, graph)
+		}
+
 		// Execute the step
 		result, err := e.executeStep(ctx, execCtx, *step)
 		if err != nil {
@@ -191,4 +209,109 @@ func (e *Executor) executeWithRetry(
 	}
 
 	return nil, errors.NewWorkflowError("", step.ID, fmt.Sprintf("after %d attempts", maxAttempts), lastErr)
+}
+
+// evaluateCondition evaluates a conditional expression
+func (e *Executor) evaluateCondition(when string, execCtx *workflow.ExecutionContext) (bool, error) {
+	// Simple implementation: check if the condition is true based on approval status
+	// In a real implementation, this would use a proper expression evaluator
+	resolver := workflow.NewVariableResolver(execCtx)
+
+	// Try to resolve the condition
+	resolved, err := resolver.Resolve(when)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if the resolved value is truthy
+	if boolVal, ok := resolved.(bool); ok {
+		return boolVal, nil
+	}
+
+	// Default to false if not a boolean
+	return false, nil
+}
+
+// handleApprovalStep handles an approval step
+func (e *Executor) handleApprovalStep(
+	ctx context.Context,
+	execCtx *workflow.ExecutionContext,
+	wf *workflow.Workflow,
+	step workflow.Step,
+	graph *executionGraph,
+) (*workflow.ExecutionContext, error) {
+	approvalConfig := step.Approval
+
+	e.logger.Printf("Approval step %s: %s", step.ID, approvalConfig.ApprovalID)
+
+	// Check if approval already exists in context
+	if existingState, exists := execCtx.Approvals[approvalConfig.ApprovalID]; exists {
+		// Check if approval has expired
+		if time.Now().Unix() > existingState.ExpiresAt {
+			e.logger.Printf("Approval %s has expired", approvalConfig.ApprovalID)
+			existingState.Status = workflow.ApprovalTimedOut
+			execCtx.Approvals[approvalConfig.ApprovalID] = existingState
+
+			// Mark step as failed due to timeout
+			execCtx.Steps[step.ID] = workflow.StepResult{
+				Success: false,
+				Error:   "approval timed out",
+			}
+			return execCtx, nil
+		}
+
+		// Check approval status
+		if existingState.Status == workflow.ApprovalApproved {
+			e.logger.Printf("Approval %s already approved", approvalConfig.ApprovalID)
+			execCtx.Steps[step.ID] = workflow.StepResult{
+				Success: true,
+				Output:  existingState.DecisionData,
+			}
+			return execCtx, nil
+		} else if existingState.Status == workflow.ApprovalRejected {
+			e.logger.Printf("Approval %s was rejected", approvalConfig.ApprovalID)
+			execCtx.Steps[step.ID] = workflow.StepResult{
+				Success: false,
+				Error:   "approval was rejected",
+			}
+			return execCtx, nil
+		}
+
+		// Still pending, continue with pause logic
+	}
+
+	// Create approval state
+	timeout := approvalConfig.Timeout
+	if timeout == 0 {
+		timeout = 86400 // Default 24 hours
+	}
+
+	approvalState := workflow.ApprovalState{
+		ApprovalID: approvalConfig.ApprovalID,
+		Status:     workflow.ApprovalPending,
+		Approvals:  make(map[string]workflow.ApprovalRecord),
+		CreatedAt:  time.Now().Unix(),
+		ExpiresAt:  time.Now().Unix() + int64(timeout),
+	}
+
+	// Store approval state in execution context
+	if execCtx.Approvals == nil {
+		execCtx.Approvals = make(map[string]workflow.ApprovalState)
+	}
+	execCtx.Approvals[approvalConfig.ApprovalID] = approvalState
+
+	// Mark workflow as paused
+	execCtx.Paused = true
+	execCtx.CurrentStepID = step.ID
+	execCtx.PausedAt = time.Now().Unix()
+
+	e.logger.Printf("Workflow paused waiting for approval: %s (expires in %d seconds)", approvalConfig.ApprovalID, timeout)
+
+	// In a real implementation, this would:
+	// 1. Send approval notification based on method (slack, webhook, etc.)
+	// 2. Save state to state store
+	// 3. Exit execution
+
+	// For now, return the paused context
+	return execCtx, nil
 }

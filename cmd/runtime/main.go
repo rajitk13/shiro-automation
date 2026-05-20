@@ -36,6 +36,8 @@ func main() {
 		cli.ModuleCommand(args)
 	case "module":
 		cli.ModuleCommand(args)
+	case "approve":
+		cli.ApproveCommand(args)
 	case "help", "-help", "--help":
 		printHelp()
 	default:
@@ -68,6 +70,7 @@ func printHelp() {
 	println("  install module    Install a module from GitHub")
 	println("  info module       Display module information")
 	println("  docs module       Open module documentation")
+	println("  approve           Manage workflow approvals")
 	println("  help              Show this help message")
 	println()
 	println("Examples:")
@@ -75,6 +78,7 @@ func printHelp() {
 	println("  shiro run")
 	println("  shiro add module jira")
 	println("  shiro list modules")
+	println("  shiro approve list")
 	println()
 	println("For more information: https://github.com/rajitk13/shiro-automation")
 }
