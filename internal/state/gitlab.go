@@ -34,6 +34,12 @@ func (s *GitLabStore) Save(ctx context.Context, key string, state interface{}) e
 		return err
 	}
 
+	// Include pipeline ID in key for isolation between pipelines
+	pipelineID := os.Getenv("CI_PIPELINE_ID")
+	if pipelineID != "" {
+		key = fmt.Sprintf("%s-pipeline-%s", key, pipelineID)
+	}
+
 	// Save to artifacts directory
 	stateDir := fmt.Sprintf("%s/.shiro/state", s.artifactsDir)
 	if err := os.MkdirAll(stateDir, 0755); err != nil {
@@ -46,6 +52,12 @@ func (s *GitLabStore) Save(ctx context.Context, key string, state interface{}) e
 
 // Load loads the workflow execution state from GitLab artifacts
 func (s *GitLabStore) Load(ctx context.Context, key string, target interface{}) error {
+	// Include pipeline ID in key for isolation between pipelines
+	pipelineID := os.Getenv("CI_PIPELINE_ID")
+	if pipelineID != "" {
+		key = fmt.Sprintf("%s-pipeline-%s", key, pipelineID)
+	}
+
 	stateDir := fmt.Sprintf("%s/.shiro/state", s.artifactsDir)
 	filePath := fmt.Sprintf("%s/%s.json", stateDir, key)
 
@@ -62,6 +74,12 @@ func (s *GitLabStore) Load(ctx context.Context, key string, target interface{}) 
 
 // Delete deletes the workflow execution state
 func (s *GitLabStore) Delete(ctx context.Context, key string) error {
+	// Include pipeline ID in key for isolation between pipelines
+	pipelineID := os.Getenv("CI_PIPELINE_ID")
+	if pipelineID != "" {
+		key = fmt.Sprintf("%s-pipeline-%s", key, pipelineID)
+	}
+
 	stateDir := fmt.Sprintf("%s/.shiro/state", s.artifactsDir)
 	filePath := fmt.Sprintf("%s/%s.json", stateDir, key)
 	return os.Remove(filePath)
@@ -69,6 +87,12 @@ func (s *GitLabStore) Delete(ctx context.Context, key string) error {
 
 // Exists checks if a state exists
 func (s *GitLabStore) Exists(ctx context.Context, key string) (bool, error) {
+	// Include pipeline ID in key for isolation between pipelines
+	pipelineID := os.Getenv("CI_PIPELINE_ID")
+	if pipelineID != "" {
+		key = fmt.Sprintf("%s-pipeline-%s", key, pipelineID)
+	}
+
 	stateDir := fmt.Sprintf("%s/.shiro/state", s.artifactsDir)
 	filePath := fmt.Sprintf("%s/%s.json", stateDir, key)
 
