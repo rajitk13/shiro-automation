@@ -20,6 +20,8 @@ func main() {
 		cli.InitCommand(args)
 	case "run":
 		cli.RunCommand(args)
+	case "validate":
+		cli.ValidateCommand(args)
 	case "add":
 		cli.ModuleCommand(args)
 	case "search":
@@ -61,6 +63,7 @@ func printHelp() {
 	println("Commands:")
 	println("  init              Initialize a Shiro project")
 	println("  run               Run a workflow")
+	println("  validate          Validate a workflow")
 	println("  add module        Add a module")
 	println("  list modules      List available modules")
 	println("  search module     Search for modules")
@@ -73,6 +76,7 @@ func printHelp() {
 	println("Examples:")
 	println("  shiro init")
 	println("  shiro run")
+	println("  shiro validate -workflow .shiro/workflow.json")
 	println("  shiro add module jira")
 	println("  shiro list modules")
 	println()

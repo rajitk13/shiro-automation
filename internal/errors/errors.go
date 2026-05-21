@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Error types for Shiro
@@ -114,6 +115,21 @@ func NewValidationError(field, message string, err error) *ValidationError {
 		Message: message,
 		Err:     err,
 	}
+}
+
+// ValidationErrors represents multiple validation errors.
+type ValidationErrors []*ValidationError
+
+func (e ValidationErrors) Error() string {
+	if len(e) == 0 {
+		return ""
+	}
+
+	messages := make([]string, 0, len(e))
+	for _, err := range e {
+		messages = append(messages, err.Error())
+	}
+	return strings.Join(messages, "\n")
 }
 
 // StateError represents errors related to state storage

@@ -82,31 +82,86 @@ func LoadWorkflowFromFile(path string) (*Workflow, error) {
 
 // Validate performs basic validation on the workflow
 func (w *Workflow) Validate() error {
+	validationErrors := errors.ValidationErrors{}
+
 	if w.Name == "" {
-		return errors.NewValidationError("name", "workflow name is required", nil)
+		validationErrors = append(validationErrors, errors.NewValidationError("name", "workflow name is required", nil))
 	}
 
 	if len(w.Steps) == 0 {
-		return errors.NewValidationError("steps", "workflow must have at least one step", nil)
+		validationErrors = append(validationErrors, errors.NewValidationError("steps", "workflow must have at least one step", nil))
 	}
 
 	stepIDs := make(map[string]bool)
 	for i, step := range w.Steps {
 		if step.ID == "" {
-			return errors.NewValidationError(fmt.Sprintf("steps[%d].id", i), "step ID is required", nil)
+			validationErrors = append(validationErrors, errors.NewValidationError(fmt.Sprintf("steps[%d].id", i), "step ID is required", nil))
+			continue
 		}
 		if step.Type == "" {
-			return errors.NewValidationError(fmt.Sprintf("steps[%s].type", step.ID), "step type is required", nil)
+			validationErrors = append(validationErrors, errors.NewValidationError(fmt.Sprintf("steps[%s].type", step.ID), "step type is required", nil))
 		}
 		if stepIDs[step.ID] {
-			return errors.NewValidationError(fmt.Sprintf("steps[%s].id", step.ID), "duplicate step ID", nil)
+			validationErrors = append(validationErrors, errors.NewValidationError(fmt.Sprintf("steps[%s].id", step.ID), "duplicate step ID", nil))
 		}
 		stepIDs[step.ID] = true
+	}
 
-		// Validate dependencies
+	for _, step := range w.Steps {
+		if step.ID == "" {
+			continue
+		}
 		for _, dep := range step.DependsOn {
 			if !stepIDs[dep] {
-				return errors.NewValidationError(fmt.Sprintf("steps[%s].depends_on", step.ID), fmt.Sprintf("depends on non-existent step %s", dep), nil)
+				validationErrors = append(validationErrors, errors.NewValidationError(fmt.Sprintf("steps[%s].depends_on", step.ID), fmt.Sprintf("depends on non-existent step %s", dep), nil))
+			}
+		}
+	}
+
+	if len(validationErrors) > 0 {
+		return validationErrors
+	}
+
+	if err := w.validateNoCycles(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *Workflow) validateNoCycles() error {
+	dependencies := make(map[string][]string, len(w.Steps))
+	for _, step := range w.Steps {
+		dependencies[step.ID] = step.DependsOn
+	}
+
+	visiting := make(map[string]bool)
+	visited := make(map[string]bool)
+	var visit func(string) bool
+
+	visit = func(stepID string) bool {
+		if visiting[stepID] {
+			return true
+		}
+		if visited[stepID] {
+			return false
+		}
+
+		visiting[stepID] = true
+		for _, dep := range dependencies[stepID] {
+			if visit(dep) {
+				return true
+			}
+		}
+		visiting[stepID] = false
+		visited[stepID] = true
+		return false
+	}
+
+	for stepID := range dependencies {
+		if visit(stepID) {
+			return errors.ValidationErrors{
+				errors.NewValidationError("steps", "cycle detected in workflow dependencies", nil),
 			}
 		}
 	}

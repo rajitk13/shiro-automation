@@ -34,16 +34,19 @@ func buildExecutionGraph(steps []workflow.Step) (*executionGraph, error) {
 }
 
 // topologicalSort performs topological sort on the graph
+// graph maps node -> list of dependencies (nodes it depends on)
 func topologicalSort(graph map[string][]string) ([]string, error) {
-	// Calculate in-degree for each node
+	// Calculate in-degree for each node (number of dependencies)
 	inDegree := make(map[string]int)
 	for node := range graph {
-		inDegree[node] = 0
+		inDegree[node] = len(graph[node])
 	}
 
-	for _, deps := range graph {
+	// Build reverse adjacency: dep -> list of nodes that depend on it
+	dependents := make(map[string][]string)
+	for node, deps := range graph {
 		for _, dep := range deps {
-			inDegree[dep]++
+			dependents[dep] = append(dependents[dep], node)
 		}
 	}
 
@@ -62,11 +65,11 @@ func topologicalSort(graph map[string][]string) ([]string, error) {
 		queue = queue[1:]
 		result = append(result, node)
 
-		// Decrease in-degree for dependent nodes
-		for _, dep := range graph[node] {
-			inDegree[dep]--
-			if inDegree[dep] == 0 {
-				queue = append(queue, dep)
+		// Decrease in-degree for nodes that depend on this one
+		for _, dependent := range dependents[node] {
+			inDegree[dependent]--
+			if inDegree[dependent] == 0 {
+				queue = append(queue, dependent)
 			}
 		}
 	}
@@ -86,17 +89,22 @@ func (g *executionGraph) topologicalOrder() []string {
 
 // dependenciesSatisfied checks if all dependencies for a step are satisfied
 func (g *executionGraph) dependenciesSatisfied(stepID string, completedSteps map[string]workflow.StepResult) bool {
+	return len(g.missingDependencies(stepID, completedSteps)) == 0
+}
+
+func (g *executionGraph) missingDependencies(stepID string, completedSteps map[string]workflow.StepResult) []string {
 	deps, exists := g.nodes[stepID]
 	if !exists {
-		return true
+		return nil
 	}
 
+	missing := make([]string, 0)
 	for _, dep := range deps {
 		_, completed := completedSteps[dep]
 		if !completed {
-			return false
+			missing = append(missing, dep)
 		}
 	}
 
-	return true
+	return missing
 }
