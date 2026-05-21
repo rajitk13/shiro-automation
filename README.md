@@ -20,8 +20,8 @@ Shiro is a production-ready Go-based workflow runtime that:
 - **Auto-Discovery**: Search and install modules from official GitHub repository
 - **AI Providers**: Support for Ollama, OpenAI, and custom endpoints
 - **State Storage**: Modular backends (GitLab artifacts, filesystem, memory)
-- **GitLab Integration**: Both CI job and webhook-triggered modes
-- **GitHub Integration**: GitHub Actions workflows and webhook support
+- **GitLab Integration**: GitLab CI workflow support
+- **GitHub Integration**: GitHub Actions workflows support
 - **Variable Resolution**: Template-based parameterization (inputs, env vars, step outputs)
 - **Retry Logic**: Configurable retry with exponential backoff
 - **Human-in-Loop Approvals**: Slack-based approval workflows with configurable permissions
@@ -290,22 +290,6 @@ shiro add module jira
 
 For a complete customer journey guide, see [docs/CUSTOMER_JOURNEY.md](docs/CUSTOMER_JOURNEY.md).
 
-### Webhook Mode
-
-1. Build the webhook server:
-```bash
-go build -o webhook-server ./cmd/webhook-server
-```
-
-2. Run the server:
-```bash
-export CONFIG_FILE=configs/models.yaml
-export WORKFLOW_DIR=./workflows
-./webhook-server
-```
-
-3. Configure GitLab or GitHub webhooks to point to your server
-
 ## Workflow Definition
 
 Workflows are defined in JSON:
@@ -487,14 +471,6 @@ jobs:
         run: ./shiro -workflow examples/github-mr-review.json -config configs/models.yaml
 ```
 
-### Webhook Mode
-
-Configure GitHub webhook to point to your server at `/webhook/github`. The server will:
-- Parse GitHub webhook events
-- Match events to workflows
-- Execute workflows asynchronously
-- Persist state to filesystem
-
 ## GitLab CI Integration
 
 ### CI Job Mode
@@ -514,14 +490,6 @@ ai-review:
   only:
     - merge_requests
 ```
-
-### Webhook Mode
-
-Configure GitLab webhook to point to your server at `/webhook/gitlab`. The server will:
-- Parse GitLab webhook events
-- Match events to workflows
-- Execute workflows asynchronously
-- Persist state to filesystem
 
 ## State Storage
 
@@ -559,7 +527,6 @@ Trigger Adapters (GitLab/Jenkins/GitHub)
 ```
 cmd/
   runtime/          # CLI binary
-  webhook-server/   # Webhook receiver
 internal/
   runtime/          # Core execution engine
   workflow/         # Workflow definitions
@@ -588,7 +555,7 @@ shiro build
 shiro test
 
 # Clean build artifacts
-rm -f shiro webhook-server
+rm -f shiro
 ```
 
 ### Testing

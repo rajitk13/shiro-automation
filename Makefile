@@ -1,13 +1,10 @@
-.PHONY: build build-runtime build-webhook test clean lint help install-deps install
+.PHONY: build build-runtime test clean lint help install-deps install
 
 # Build targets
-build: build-runtime build-webhook
+build: build-runtime
 
 build-runtime:
 	go build -o shiro ./cmd/runtime
-
-build-webhook:
-	go build -o webhook-server ./cmd/webhook-server
 
 # Install shiro to PATH
 install:
@@ -19,7 +16,7 @@ test:
 
 # Clean build artifacts
 clean:
-	rm -f shiro webhook-server
+	rm -f shiro
 	rm -rf .shiro/
 
 # Run linter
@@ -41,9 +38,8 @@ help:
 	@echo "Shiro - AI-Native CI Workflow Runtime"
 	@echo ""
 	@echo "Available commands:"
-	@echo "  make build          Build both runtime and webhook server"
+	@echo "  make build          Build runtime binary"
 	@echo "  make build-runtime  Build runtime binary"
-	@echo "  make build-webhook  Build webhook server binary"
 	@echo "  make install        Install shiro to /usr/local/bin (requires sudo)"
 	@echo "  make test           Run tests with coverage"
 	@echo "  make clean          Remove build artifacts"
