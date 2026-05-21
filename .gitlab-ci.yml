@@ -2,7 +2,6 @@ stages:
   - review
   - test
   - approval
-  - resume
   - build
   - release
 
@@ -52,9 +51,9 @@ approval-initial:
     - main
     - master
 
-# Manual approval workflow - resume stage (manual trigger)
+# Manual approval workflow - resume (manual trigger, blocks pipeline)
 approval-resume:
-  stage: resume
+  stage: approval
   image: golang:1.21
   before_script:
     - apt-get update && apt-get install -y git
@@ -67,6 +66,8 @@ approval-resume:
       - .shiro/
     expire_in: 1 day
   when: manual
+  needs:
+    - approval-initial
   only:
     - main
     - master

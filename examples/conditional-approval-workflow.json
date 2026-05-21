@@ -19,7 +19,7 @@
         "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
         "channel": "#deployments",
         "message": "Review this AI-generated summary: {{steps.ai_initial.content}}",
-        "gitlab_pipeline_url": "{{env.CI_SERVER_URL}}/{{env.CI_PROJECT_ID}}/-/pipelines/{{env.CI_PIPELINE_ID}}",
+        "gitlab_pipeline_url": "{{env.CI_SERVER_URL}}/{{env.CI_PROJECT_PATH}}/-/pipelines/{{env.CI_PIPELINE_ID}}",
         "button_text": "Review in GitLab"
       }
     },
