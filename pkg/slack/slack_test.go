@@ -47,8 +47,8 @@ func TestSlackNotifyIncludesGitLabReviewButton(t *testing.T) {
 		t.Fatal("payload missing blocks for GitLab review button")
 	}
 	blocks := payload["blocks"].([]interface{})
-	actions := blocks[1].(map[string]interface{})["actions"].([]interface{})
-	button := actions[0].(map[string]interface{})
+	elements := blocks[1].(map[string]interface{})["elements"].([]interface{})
+	button := elements[0].(map[string]interface{})
 	text := button["text"].(map[string]interface{})
 	if text["type"] != "plain_text" {
 		t.Fatalf("button text type = %v, want plain_text", text["type"])

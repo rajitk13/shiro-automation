@@ -99,7 +99,7 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 			},
 			{
 				"type": "actions",
-				"actions": []map[string]interface{}{
+				"elements": []map[string]interface{}{
 					{
 						"type": "button",
 						"text": map[string]interface{}{
