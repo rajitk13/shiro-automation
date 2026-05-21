@@ -8,13 +8,15 @@ import (
 
 	"github.com/rkuthiala/shiro-automation/internal/errors"
 	"github.com/rkuthiala/shiro-automation/internal/modules"
+	"github.com/rkuthiala/shiro-automation/internal/state"
 	"github.com/rkuthiala/shiro-automation/internal/workflow"
 )
 
 // Executor handles workflow execution
 type Executor struct {
-	registry *modules.Registry
-	logger   *log.Logger
+	registry   *modules.Registry
+	logger     *log.Logger
+	stateStore state.StateStore
 }
 
 // NewExecutor creates a new workflow executor
@@ -23,6 +25,11 @@ func NewExecutor(registry *modules.Registry, logger *log.Logger) *Executor {
 		registry: registry,
 		logger:   logger,
 	}
+}
+
+// SetStateStore sets the state store for resumption
+func (e *Executor) SetStateStore(store state.StateStore) {
+	e.stateStore = store
 }
 
 // Execute runs a workflow with the given inputs
@@ -42,6 +49,20 @@ func (e *Executor) Execute(
 	execCtx.Inputs = inputs
 	execCtx.Env = env
 
+	// Try to load previous state for resumption
+	if e.stateStore != nil {
+		exists, err := e.stateStore.Exists(ctx, wf.Name)
+		if err == nil && exists {
+			previousCtx := workflow.NewExecutionContext()
+			if err := e.stateStore.Load(ctx, wf.Name, previousCtx); err == nil {
+				e.logger.Printf("Resuming workflow: %s from previous state", wf.Name)
+				execCtx = previousCtx
+				execCtx.Inputs = inputs // Update inputs with current values
+				execCtx.Env = env       // Update env with current values
+			}
+		}
+	}
+
 	e.logger.Printf("Starting workflow: %s", wf.Name)
 
 	// Build execution graph
@@ -51,15 +72,43 @@ func (e *Executor) Execute(
 	}
 
 	// Execute steps in topological order
+	conditionEvaluator := workflow.NewConditionEvaluator()
+
 	for _, stepID := range graph.topologicalOrder() {
 		step := wf.GetStepByID(stepID)
 		if step == nil {
 			return nil, errors.NewWorkflowError(wf.Name, stepID, "step not found", nil)
 		}
 
+		// Skip if already completed
+		if execCtx.Completed[stepID] {
+			e.logger.Printf("Step %s already completed, skipping", stepID)
+			continue
+		}
+
 		// Check if dependencies are satisfied
 		if !graph.dependenciesSatisfied(stepID, execCtx.Steps) {
 			return nil, errors.NewWorkflowError(wf.Name, stepID, "dependencies not satisfied", nil)
+		}
+
+		// Evaluate condition if specified
+		if step.Condition != "" {
+			conditionMet, err := conditionEvaluator.Evaluate(step.Condition, execCtx)
+			if err != nil {
+				e.logger.Printf("Step %s condition evaluation failed: %v", stepID, err)
+				return nil, errors.NewWorkflowError(wf.Name, stepID, "condition evaluation failed", err)
+			}
+
+			if !conditionMet {
+				e.logger.Printf("Step %s skipped (condition not met)", stepID)
+				// Mark step as skipped but successful
+				execCtx.Steps[stepID] = workflow.StepResult{
+					Success: true,
+					Output:  map[string]interface{}{"skipped": true, "reason": "condition not met"},
+				}
+				execCtx.Completed[stepID] = true
+				continue
+			}
 		}
 
 		// Execute the step
@@ -70,10 +119,21 @@ func (e *Executor) Execute(
 		}
 
 		execCtx.Steps[stepID] = *result
+		execCtx.Completed[stepID] = true
+		execCtx.StepStatus[stepID] = "completed"
+
 		if !result.Success {
 			e.logger.Printf("Step %s failed: %s", stepID, result.Error)
+			execCtx.StepStatus[stepID] = "failed"
 		} else {
 			e.logger.Printf("Step %s completed: %v", stepID, result.Success)
+		}
+
+		// Save state after each step
+		if e.stateStore != nil {
+			if err := e.stateStore.Save(ctx, wf.Name, execCtx); err != nil {
+				e.logger.Printf("Failed to save state after step %s: %v", stepID, err)
+			}
 		}
 	}
 

@@ -98,6 +98,12 @@ func (m *SlackApproveModule) Run(ctx context.Context, stepCtx interface{}, step 
 		}
 	}
 
+	// Check for non-blocking mode
+	blocking := true
+	if b, ok := wfStep.Config["blocking"].(bool); ok {
+		blocking = b
+	}
+
 	// Validate permissions
 	if permissions == "users" && len(allowedUsers) == 0 {
 		return nil, fmt.Errorf("permissions mode 'users' requires allowed_users to be specified")
@@ -177,7 +183,17 @@ func (m *SlackApproveModule) Run(ctx context.Context, stepCtx interface{}, step 
 
 	m.logger.Printf("Approval request %s sent, waiting for approval...", approvalID)
 
-	// Poll for approval status
+	// Non-blocking mode: return immediately with pending status
+	if !blocking {
+		m.logger.Printf("Non-blocking mode: returning immediately with pending status")
+		return map[string]interface{}{
+			"status":      "pending",
+			"approval_id": approvalID,
+			"blocking":    false,
+		}, nil
+	}
+
+	// Poll for approval status (blocking mode)
 	pollTicker := time.NewTicker(time.Duration(pollInterval) * time.Second)
 	defer pollTicker.Stop()
 
@@ -296,6 +312,12 @@ func (m *SlackApproveModule) Metadata() modules.ModuleMetadata {
 				Description: "Action on timeout: fail, continue, retry (default: fail)",
 				Required:    false,
 				Default:     "fail",
+			},
+			"blocking": {
+				Type:        "boolean",
+				Description: "Block until approval (default: true)",
+				Required:    false,
+				Default:     true,
 			},
 		},
 		OutputSchema: map[string]modules.SchemaField{

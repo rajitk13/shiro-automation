@@ -23,6 +23,7 @@ type Step struct {
 	Type      string                 `json:"type"`
 	Config    map[string]interface{} `json:"config,omitempty"`
 	DependsOn []string               `json:"depends_on,omitempty"`
+	Condition string                 `json:"condition,omitempty"`
 	Retry     *RetryConfig           `json:"retry,omitempty"`
 	Timeout   int                    `json:"timeout,omitempty"` // seconds
 }
@@ -44,19 +45,23 @@ type StepResult struct {
 
 // ExecutionContext holds the shared state during workflow execution
 type ExecutionContext struct {
-	Inputs map[string]interface{}
-	Steps  map[string]StepResult
-	Memory map[string]interface{}
-	Env    map[string]string
+	Inputs     map[string]interface{}
+	Steps      map[string]StepResult
+	Memory     map[string]interface{}
+	Env        map[string]string
+	Completed  map[string]bool   // Track completed steps for resumption
+	StepStatus map[string]string // Track individual step statuses
 }
 
 // NewExecutionContext creates a new execution context
 func NewExecutionContext() *ExecutionContext {
 	return &ExecutionContext{
-		Inputs: make(map[string]interface{}),
-		Steps:  make(map[string]StepResult),
-		Memory: make(map[string]interface{}),
-		Env:    make(map[string]string),
+		Inputs:     make(map[string]interface{}),
+		Steps:      make(map[string]StepResult),
+		Memory:     make(map[string]interface{}),
+		Env:        make(map[string]string),
+		Completed:  make(map[string]bool),
+		StepStatus: make(map[string]string),
 	}
 }
 
