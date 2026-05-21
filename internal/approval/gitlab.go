@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/rkuthiala/shiro-automation/internal/gitlab"
@@ -158,7 +159,7 @@ func (s *GitLabStore) ListPending(workflowID string) ([]*ApprovalRequest, error)
 	if err == nil {
 		var pending []*ApprovalRequest
 		for _, artifactPath := range artifactFiles {
-			if !filepath.HasPrefix(artifactPath, "shiro-approvals/") {
+			if !strings.HasPrefix(filepath.Clean(artifactPath), "shiro-approvals") {
 				continue
 			}
 

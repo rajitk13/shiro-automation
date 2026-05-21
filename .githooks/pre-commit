@@ -15,6 +15,24 @@ go vet ./... || {
     exit 1
 }
 
+# Run golangci-lint if available
+if command -v golangci-lint &> /dev/null; then
+    golangci-lint run 2>&1 | grep -v "can't load config: unsupported version" | grep -v "See https://golangci-lint.run/docs/product/migration-guide" || {
+        # Check if the error is just about config version
+        if golangci-lint run 2>&1 | grep -q "can't load config: unsupported version"; then
+            echo "Warning: golangci-lint config version mismatch, skipping local lint check"
+            echo "CI will run with latest golangci-lint version"
+        else
+            echo "Error: golangci-lint failed"
+            echo "Run 'golangci-lint run --fix' to auto-fix issues"
+            exit 1
+        fi
+    }
+else
+    echo "Warning: golangci-lint not found, skipping lint check"
+    echo "Install it from: https://golangci-lint.run/usage/install/"
+fi
+
 # Run tests
 go test ./... || {
     echo "Error: tests failed"
