@@ -169,3 +169,94 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 
 	return nil
 }
+
+// UploadArtifact uploads a file as a GitLab job artifact
+func (c *Client) UploadArtifact(ctx context.Context, projectID, jobID, artifactPath string, content []byte) error {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, projectID, jobID, artifactPath)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(content))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("PRIVATE-TOKEN", c.token)
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}
+
+// DownloadArtifact downloads a file from GitLab job artifacts
+func (c *Client) DownloadArtifact(ctx context.Context, projectID, jobID, artifactPath string) ([]byte, error) {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, projectID, jobID, artifactPath)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("PRIVATE-TOKEN", c.token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+// ListJobArtifacts lists all artifacts for a job
+func (c *Client) ListJobArtifacts(ctx context.Context, projectID, jobID string) ([]string, error) {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts", c.baseURL, projectID, jobID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("PRIVATE-TOKEN", c.token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Files []struct {
+			Path string `json:"path"`
+		} `json:"files"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	var paths []string
+	for _, file := range result.Files {
+		paths = append(paths, file.Path)
+	}
+
+	return paths, nil
+}
