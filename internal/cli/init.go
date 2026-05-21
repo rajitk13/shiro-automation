@@ -110,16 +110,18 @@ models:
   #   source: "github.com/your-org/jira-module"
   #   docs: "https://github.com/your-org/jira-module/blob/main/README.md"`
 
-	if err := os.WriteFile("modules/registry.yaml", []byte(registryContent), 0644); err != nil {
-		log.Fatalf("Failed to create modules/registry.yaml: %v", err)
+	if err := os.WriteFile(".shiro/modules/registry.yaml", []byte(registryContent), 0644); err != nil {
+		log.Fatalf("Failed to create .shiro/modules/registry.yaml: %v", err)
 	}
-	fmt.Println("Created file: modules/registry.yaml")
+
+	fmt.Println("Created file: .shiro/modules/registry.yaml")
 
 	// Create .gitignore entry
 	gitignorePath := ".gitignore"
 	gitignoreContent := `
 # Shiro configuration
 .shiro/
+.shiro/modules/
 `
 
 	// Append to .gitignore if it exists, otherwise create it

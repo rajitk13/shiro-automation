@@ -54,9 +54,6 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 		return nil, fmt.Errorf("message is required")
 	}
 
-	username, _ := wfStep.Config["username"].(string)
-	iconEmoji, _ := wfStep.Config["icon_emoji"].(string)
-
 	// Build Slack message
 	slackMsg := map[string]interface{}{
 		"text": message,
@@ -64,12 +61,6 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 
 	if channel != "" {
 		slackMsg["channel"] = channel
-	}
-	if username != "" {
-		slackMsg["username"] = username
-	}
-	if iconEmoji != "" {
-		slackMsg["icon_emoji"] = iconEmoji
 	}
 
 	// Add attachments if provided

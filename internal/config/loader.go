@@ -139,7 +139,7 @@ func resolveEnvVarString(input string) string {
 func GetRegistryPath(shiroDir string) string {
 	registryPath := filepath.Join(shiroDir, "modules", "registry.yaml")
 	if _, err := os.Stat(registryPath); err != nil {
-		return "modules/registry.yaml" // Fallback to default
+		return ".shiro/modules/registry.yaml" // Fallback to default
 	}
 	return registryPath
 }

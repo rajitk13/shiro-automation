@@ -1,0 +1,43 @@
+{
+  "name": "approval-example",
+  "description": "Example workflow with human-in-loop approval",
+  "inputs": {
+    "environment": "production"
+  },
+  "steps": [
+    {
+      "id": "request_approval",
+      "type": "slack.approve",
+      "config": {
+        "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
+        "channel": "#deployments",
+        "message": "Approve deployment to {{inputs.environment}}?",
+        "timeout": 3600,
+        "poll_interval": 30,
+        "timeout_action": "fail",
+        "permissions": "users",
+        "allowed_users": ["@alice", "@bob", "@charlie"]
+      }
+    },
+    {
+      "id": "deploy",
+      "type": "print",
+      "config": {
+        "message": "Deployment to {{inputs.environment}} approved! Proceeding with deployment..."
+      },
+      "depends_on": ["request_approval"]
+    },
+    {
+      "id": "notify_success",
+      "type": "slack.notify",
+      "config": {
+        "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
+        "channel": "#deployments",
+        "message": "Deployment to {{inputs.environment}} completed successfully!",
+        "username": "Deploy Bot",
+        "icon_emoji": ":rocket:"
+      },
+      "depends_on": ["deploy"]
+    }
+  ]
+}

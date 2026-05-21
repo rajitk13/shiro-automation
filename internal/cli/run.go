@@ -9,8 +9,6 @@ import (
 	"os"
 
 	"github.com/rkuthiala/shiro-automation/internal/config"
-	"github.com/rkuthiala/shiro-automation/internal/github"
-	"github.com/rkuthiala/shiro-automation/internal/gitlab"
 	"github.com/rkuthiala/shiro-automation/internal/modules"
 	"github.com/rkuthiala/shiro-automation/internal/runtime"
 	"github.com/rkuthiala/shiro-automation/internal/state"
@@ -123,10 +121,10 @@ func RunCommand(args []string) {
 
 	// Register built-in modules
 	if err := registerBuiltInModules(registry); err != nil {
-		log.Fatalf("Failed to register built-in modules: %v", err)
+		log.Fatalf("Failed to register modules: %v", err)
 	}
 
-	// Register AI module with providers
+	// Register AI providers
 	aiModule, err := registerAIProviders(modelConfig, logger)
 	if err != nil {
 		log.Fatalf("Failed to register AI providers: %v", err)
@@ -171,6 +169,12 @@ func registerBuiltInModules(registry *modules.Registry) error {
 	skipTLSVerify := os.Getenv("SHIRO_SKIP_TLS_VERIFY") == "true"
 	slackModule := slack.NewSlackModule(skipTLSVerify)
 	if err := registry.Register("slack.notify", slackModule); err != nil {
+		return err
+	}
+
+	// Register Slack approval module
+	slackApproveModule := slack.NewSlackApproveModule(slackModule)
+	if err := registry.Register("slack.approve", slackApproveModule); err != nil {
 		return err
 	}
 
@@ -258,42 +262,28 @@ func registerAIProviders(modelConfig map[string]map[string]interface{}, logger *
 	return aiModule, nil
 }
 
-// loadEnvironment loads environment variables
+// loadEnvironment loads environment variables from the system and CI context
 func loadEnvironment() map[string]string {
 	env := make(map[string]string)
 
-	// Load all environment variables
-	for _, envVar := range os.Environ() {
-		parts := splitEnv(envVar)
-		if len(parts) == 2 {
-			env[parts[0]] = parts[1]
+	// Load system environment variables
+	for _, e := range os.Environ() {
+		if k, v := splitEnv(e); k != "" {
+			env[k] = v
 		}
 	}
-
-	// Add GitLab-specific environment variables
-	env["CI_PROJECT_ID"] = gitlab.GetProjectID()
-	env["CI_MERGE_REQUEST_IID"] = gitlab.GetMRID()
-	env["CI_COMMIT_SHA"] = gitlab.GetCommitSHA()
-	env["CI_COMMIT_REF_NAME"] = gitlab.GetBranch()
-
-	// Add GitHub-specific environment variables
-	env["GITHUB_REPOSITORY"] = github.GetRepository()
-	env["GITHUB_PR_NUMBER"] = github.GetPRNumber()
-	env["GITHUB_SHA"] = github.GetCommitSHA()
-	env["GITHUB_REF_NAME"] = github.GetBranch()
-	env["GITHUB_REPOSITORY_OWNER"] = github.GetOwner()
 
 	return env
 }
 
 // splitEnv splits an environment variable into key and value
-func splitEnv(envVar string) []string {
+func splitEnv(envVar string) (string, string) {
 	for i := 0; i < len(envVar); i++ {
 		if envVar[i] == '=' {
-			return []string{envVar[:i], envVar[i+1:]}
+			return envVar[:i], envVar[i+1:]
 		}
 	}
-	return []string{envVar}
+	return envVar, ""
 }
 
 // outputResults outputs workflow execution results

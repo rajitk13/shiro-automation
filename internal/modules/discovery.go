@@ -38,20 +38,32 @@ type RegistryConfig struct {
 	Modules map[string]ModuleConfig `yaml:"modules"`
 }
 
+// BuiltinModuleFactory is a function that creates a built-in module instance
+type BuiltinModuleFactory func() (interface{}, error)
+
 // Discoverer handles module discovery and loading
 type Discoverer struct {
-	registryPath string
-	registry     *RegistryConfig
-	httpClient   *HTTPModuleClient
-	mu           sync.RWMutex
+	registryPath     string
+	registry         *RegistryConfig
+	httpClient       *HTTPModuleClient
+	builtinFactories map[string]BuiltinModuleFactory
+	mu               sync.RWMutex
 }
 
 // NewDiscoverer creates a new module discoverer
 func NewDiscoverer(registryPath string, httpClient *HTTPModuleClient) *Discoverer {
 	return &Discoverer{
-		registryPath: registryPath,
-		httpClient:   httpClient,
+		registryPath:     registryPath,
+		httpClient:       httpClient,
+		builtinFactories: make(map[string]BuiltinModuleFactory),
 	}
+}
+
+// RegisterBuiltinFactory registers a factory function for a built-in module
+func (d *Discoverer) RegisterBuiltinFactory(name string, factory BuiltinModuleFactory) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.builtinFactories[name] = factory
 }
 
 // LoadRegistry loads the module registry configuration
@@ -101,6 +113,15 @@ func (d *Discoverer) Discover(ctx context.Context) ([]ModuleConfig, error) {
 				}
 				if !healthy {
 					log.Printf("Module %s is not healthy", moduleName)
+					return
+				}
+			} else if moduleConfig.Type == "builtin" {
+				// Validate built-in module factory exists
+				d.mu.RLock()
+				_, exists := d.builtinFactories[moduleName]
+				d.mu.RUnlock()
+				if !exists {
+					log.Printf("Built-in module %s factory not registered", moduleName)
 					return
 				}
 			}
@@ -179,6 +200,37 @@ func (d *Discoverer) ListModules() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+// ListBuiltinModules returns only built-in module names
+func (d *Discoverer) ListBuiltinModules() []string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	if d.registry == nil {
+		return []string{}
+	}
+
+	var names []string
+	for name, config := range d.registry.Modules {
+		if config.Type == "builtin" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// CreateBuiltinModule creates a built-in module instance using its registered factory
+func (d *Discoverer) CreateBuiltinModule(name string) (interface{}, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	factory, exists := d.builtinFactories[name]
+	if !exists {
+		return nil, fmt.Errorf("no factory registered for built-in module %s", name)
+	}
+
+	return factory()
 }
 
 // AddModule adds a module to the registry

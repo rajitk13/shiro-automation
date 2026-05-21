@@ -45,7 +45,7 @@ func ModuleCommand(args []string) {
 
 // listModules lists all available modules
 func listModules() {
-	registryPath := "modules/registry.yaml"
+	registryPath := ".shiro/modules/registry.yaml"
 	discoverer := modules.NewDiscoverer(registryPath, nil)
 
 	if err := discoverer.LoadRegistry(); err != nil {
@@ -128,7 +128,7 @@ func addModule(args []string) {
 	}
 
 	// Create module config
-	registryPath := "modules/registry.yaml"
+	registryPath := ".shiro/modules/registry.yaml"
 	discoverer := modules.NewDiscoverer(registryPath, nil)
 	if err := discoverer.LoadRegistry(); err != nil {
 		log.Fatalf("Failed to load registry: %v", err)
@@ -150,7 +150,7 @@ func addModule(args []string) {
 
 	fmt.Printf("Module '%s' added successfully!\n", moduleName)
 	fmt.Printf("Source: %s\n", metadata.Repository)
-	fmt.Printf("To use this module, configure its endpoints in modules/registry.yaml\n")
+	fmt.Printf("To use this module, configure its endpoints in .shiro/modules/registry.yaml\n")
 }
 
 // removeModule removes a module from the registry
@@ -160,7 +160,7 @@ func removeModule(args []string) {
 	}
 
 	name := args[0]
-	registryPath := "modules/registry.yaml"
+	registryPath := ".shiro/modules/registry.yaml"
 	discoverer := modules.NewDiscoverer(registryPath, nil)
 
 	if err := discoverer.LoadRegistry(); err != nil {
@@ -230,7 +230,7 @@ func installModule(args []string) {
 	}
 
 	// Add to registry
-	registryPath := "modules/registry.yaml"
+	registryPath := ".shiro/modules/registry.yaml"
 	discoverer := modules.NewDiscoverer(registryPath, nil)
 
 	if err := discoverer.LoadRegistry(); err != nil {
@@ -243,7 +243,7 @@ func installModule(args []string) {
 
 	fmt.Printf("Module %s installed successfully\n", metadata.Name)
 	fmt.Printf("Source: %s\n", metadata.Repository)
-	fmt.Printf("Please configure the module endpoints in modules/registry.yaml\n")
+	fmt.Printf("Please configure the module endpoints in .shiro/modules/registry.yaml\n")
 }
 
 // moduleInfo displays information about a module
@@ -253,7 +253,7 @@ func moduleInfo(args []string) {
 	}
 
 	name := args[0]
-	registryPath := "modules/registry.yaml"
+	registryPath := ".shiro/modules/registry.yaml"
 	discoverer := modules.NewDiscoverer(registryPath, nil)
 
 	if err := discoverer.LoadRegistry(); err != nil {
@@ -292,7 +292,7 @@ func moduleDocs(args []string) {
 	}
 
 	name := args[0]
-	registryPath := "modules/registry.yaml"
+	registryPath := ".shiro/modules/registry.yaml"
 	discoverer := modules.NewDiscoverer(registryPath, nil)
 
 	if err := discoverer.LoadRegistry(); err != nil {
