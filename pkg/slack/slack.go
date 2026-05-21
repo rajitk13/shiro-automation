@@ -54,6 +54,13 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 		return nil, fmt.Errorf("message is required")
 	}
 
+	// Check for GitLab pipeline URL for approval link
+	gitlabPipelineURL, _ := wfStep.Config["gitlab_pipeline_url"].(string)
+	buttonText, _ := wfStep.Config["button_text"].(string)
+	if buttonText == "" {
+		buttonText = "Review in GitLab"
+	}
+
 	// Build Slack message
 	slackMsg := map[string]interface{}{
 		"text": message,
@@ -61,6 +68,24 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 
 	if channel != "" {
 		slackMsg["channel"] = channel
+	}
+
+	// Add GitLab review button if pipeline URL is provided
+	if gitlabPipelineURL != "" {
+		slackMsg["attachments"] = []map[string]interface{}{
+			{
+				"color": "#3AA3E3",
+				"text":  message,
+				"actions": []map[string]interface{}{
+					{
+						"type":  "button",
+						"text":  buttonText,
+						"url":   gitlabPipelineURL,
+						"style": "primary",
+					},
+				},
+			},
+		}
 	}
 
 	// Add attachments if provided
@@ -137,6 +162,17 @@ func (m *SlackModule) Metadata() modules.ModuleMetadata {
 				Type:        "array",
 				Description: "Slack message attachments",
 				Required:    false,
+			},
+			"gitlab_pipeline_url": {
+				Type:        "string",
+				Description: "GitLab pipeline URL for review button",
+				Required:    false,
+			},
+			"button_text": {
+				Type:        "string",
+				Description: "Button text for GitLab review link",
+				Required:    false,
+				Default:     "Review in GitLab",
 			},
 		},
 		OutputSchema: map[string]modules.SchemaField{

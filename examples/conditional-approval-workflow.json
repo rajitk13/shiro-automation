@@ -1,6 +1,6 @@
 {
-  "name": "ai-approval-workflow",
-  "description": "AI generation with Slack approval and conditional execution",
+  "name": "approval-workflow",
+  "description": "AI generation with GitLab manual approval via pause mechanism",
   "steps": [
     {
       "id": "ai_initial",
@@ -12,23 +12,21 @@
     },
     {
       "id": "approval",
-      "type": "slack.approve",
+      "type": "slack.notify",
       "depends_on": ["ai_initial"],
+      "pause": true,
       "config": {
         "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
         "channel": "#deployments",
         "message": "Review this AI-generated summary: {{steps.ai_initial.output.text}}",
-        "timeout": 43200,
-        "poll_interval": 30,
-        "blocking": false,
-        "timeout_action": "continue"
+        "gitlab_pipeline_url": "{{env.CI_SERVER_URL}}/{{env.CI_PROJECT_ID}}/-/pipelines/{{env.CI_PIPELINE_ID}}",
+        "button_text": "Review in GitLab"
       }
     },
     {
       "id": "ai_final",
       "type": "ai.generate",
       "depends_on": ["approval"],
-      "condition": "{{steps.approval.status == 'approved'}}",
       "config": {
         "model": "gpt-4",
         "prompt": "Generate a detailed response based on approval"
@@ -38,7 +36,6 @@
       "id": "slack_notify",
       "type": "slack.notify",
       "depends_on": ["ai_final"],
-      "condition": "{{steps.approval.status == 'approved'}}",
       "config": {
         "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
         "channel": "#deployments",

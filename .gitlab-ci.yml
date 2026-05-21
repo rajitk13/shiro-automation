@@ -1,6 +1,8 @@
 stages:
   - review
   - test
+  - approval
+  - resume
   - build
   - release
 
@@ -32,6 +34,41 @@ push-notification:
     - main
     - master
 
+# Manual approval workflow - initial stage
+approval-initial:
+  stage: approval
+  image: golang:1.21
+  before_script:
+    - apt-get update && apt-get install -y git
+    - go build -o shiro ./cmd/runtime
+  script:
+    - ./shiro run examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab
+  artifacts:
+    paths:
+      - .shiro/
+    expire_in: 1 day
+  only:
+    - main
+    - master
+
+# Manual approval workflow - resume stage (manual trigger)
+approval-resume:
+  stage: resume
+  image: golang:1.21
+  before_script:
+    - apt-get update && apt-get install -y git
+    - go build -o shiro ./cmd/runtime
+  script:
+    - ./shiro run examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab
+  artifacts:
+    paths:
+      - .shiro/
+    expire_in: 1 day
+  when: manual
+  only:
+    - main
+    - master
+
 # Unit tests
 unit-tests:
   stage: test
@@ -51,9 +88,6 @@ build:
     - GOOS=darwin GOARCH=amd64 go build -o dist/shiro-darwin-amd64 ./cmd/runtime
     - GOOS=darwin GOARCH=arm64 go build -o dist/shiro-darwin-arm64 ./cmd/runtime
     - GOOS=windows GOARCH=amd64 go build -o dist/shiro-windows-amd64.exe ./cmd/runtime
-    - GOOS=linux GOARCH=amd64 go build -o dist/webhook-server-linux-amd64 ./cmd/webhook-server
-    - GOOS=darwin GOARCH=amd64 go build -o dist/webhook-server-darwin-amd64 ./cmd/webhook-server
-    - GOOS=windows GOARCH=amd64 go build -o dist/webhook-server-windows-amd64.exe ./cmd/webhook-server
     - cd dist && for f in *; do sha256sum "$f" > "$f.sha256"; done
   artifacts:
     paths:

@@ -144,6 +144,9 @@ func RunCommand(args []string) {
 		log.Fatalf("Failed to create state store: %v", err)
 	}
 
+	// Always set state store for pause/resume support
+	executor.SetStateStore(stateStore)
+
 	// Load environment variables
 	env := loadEnvironment()
 
@@ -169,12 +172,6 @@ func registerBuiltInModules(registry *modules.Registry) error {
 	skipTLSVerify := os.Getenv("SHIRO_SKIP_TLS_VERIFY") == "true"
 	slackModule := slack.NewSlackModule(skipTLSVerify)
 	if err := registry.Register("slack.notify", slackModule); err != nil {
-		return err
-	}
-
-	// Register Slack approval module
-	slackApproveModule := slack.NewSlackApproveModule(slackModule)
-	if err := registry.Register("slack.approve", slackApproveModule); err != nil {
 		return err
 	}
 

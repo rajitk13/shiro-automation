@@ -72,43 +72,21 @@ func (e *Executor) Execute(
 	}
 
 	// Execute steps in topological order
-	conditionEvaluator := workflow.NewConditionEvaluator()
-
 	for _, stepID := range graph.topologicalOrder() {
 		step := wf.GetStepByID(stepID)
 		if step == nil {
 			return nil, errors.NewWorkflowError(wf.Name, stepID, "step not found", nil)
 		}
 
-		// Skip if already completed
-		if execCtx.Completed[stepID] {
-			e.logger.Printf("Step %s already completed, skipping", stepID)
+		// Skip if already executed (based on state)
+		if _, exists := execCtx.Steps[stepID]; exists {
+			e.logger.Printf("Step %s already executed, skipping", stepID)
 			continue
 		}
 
 		// Check if dependencies are satisfied
 		if !graph.dependenciesSatisfied(stepID, execCtx.Steps) {
 			return nil, errors.NewWorkflowError(wf.Name, stepID, "dependencies not satisfied", nil)
-		}
-
-		// Evaluate condition if specified
-		if step.Condition != "" {
-			conditionMet, err := conditionEvaluator.Evaluate(step.Condition, execCtx)
-			if err != nil {
-				e.logger.Printf("Step %s condition evaluation failed: %v", stepID, err)
-				return nil, errors.NewWorkflowError(wf.Name, stepID, "condition evaluation failed", err)
-			}
-
-			if !conditionMet {
-				e.logger.Printf("Step %s skipped (condition not met)", stepID)
-				// Mark step as skipped but successful
-				execCtx.Steps[stepID] = workflow.StepResult{
-					Success: true,
-					Output:  map[string]interface{}{"skipped": true, "reason": "condition not met"},
-				}
-				execCtx.Completed[stepID] = true
-				continue
-			}
 		}
 
 		// Execute the step
@@ -119,14 +97,10 @@ func (e *Executor) Execute(
 		}
 
 		execCtx.Steps[stepID] = *result
-		execCtx.Completed[stepID] = true
-		execCtx.StepStatus[stepID] = "completed"
-
 		if !result.Success {
 			e.logger.Printf("Step %s failed: %s", stepID, result.Error)
-			execCtx.StepStatus[stepID] = "failed"
 		} else {
-			e.logger.Printf("Step %s completed: %v", stepID, result.Success)
+			e.logger.Printf("Step %s completed", stepID)
 		}
 
 		// Save state after each step
@@ -134,6 +108,12 @@ func (e *Executor) Execute(
 			if err := e.stateStore.Save(ctx, wf.Name, execCtx); err != nil {
 				e.logger.Printf("Failed to save state after step %s: %v", stepID, err)
 			}
+		}
+
+		// Pause after this step if specified
+		if step.Pause {
+			e.logger.Printf("Workflow paused after step %s", stepID)
+			return execCtx, nil
 		}
 	}
 
