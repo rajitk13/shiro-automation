@@ -1,43 +1,51 @@
 {
   "name": "approval-example",
-  "description": "Example workflow with human-in-loop approval",
+  "description": "Example workflow with GitLab manual approval via Slack review link",
   "inputs": {
     "environment": "production"
   },
   "steps": [
     {
+      "id": "prepare_deployment",
+      "type": "print",
+      "config": {
+        "message": "Deployment to {{inputs.environment}} is ready for review."
+      }
+    },
+    {
       "id": "request_approval",
-      "type": "slack.approve",
+      "type": "slack.notify",
+      "depends_on": ["prepare_deployment"],
+      "pause": true,
       "config": {
         "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
         "channel": "#deployments",
-        "message": "Approve deployment to {{inputs.environment}}?",
-        "timeout": 3600,
-        "poll_interval": 30,
-        "timeout_action": "fail",
-        "permissions": "users",
-        "allowed_users": ["@alice", "@bob", "@charlie"]
+        "message": "Review deployment to {{inputs.environment}}. Click the GitLab button and play the manual resume job to approve.",
+        "gitlab_pipeline_url": "{{env.CI_SERVER_URL}}/{{env.CI_PROJECT_ID}}/-/pipelines/{{env.CI_PIPELINE_ID}}",
+        "button_text": "Review in GitLab",
+        "username": "Deploy Bot",
+        "icon_emoji": ":rocket:"
       }
     },
     {
       "id": "deploy",
       "type": "print",
+      "depends_on": ["request_approval"],
       "config": {
-        "message": "Deployment to {{inputs.environment}} approved! Proceeding with deployment..."
-      },
-      "depends_on": ["request_approval"]
+        "message": "Deployment to {{inputs.environment}} approved. Proceeding with deployment..."
+      }
     },
     {
       "id": "notify_success",
       "type": "slack.notify",
+      "depends_on": ["deploy"],
       "config": {
         "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
         "channel": "#deployments",
         "message": "Deployment to {{inputs.environment}} completed successfully!",
         "username": "Deploy Bot",
         "icon_emoji": ":rocket:"
-      },
-      "depends_on": ["deploy"]
+      }
     }
   ]
 }

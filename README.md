@@ -24,30 +24,28 @@ Shiro is a production-ready Go-based workflow runtime that:
 - **GitHub Integration**: GitHub Actions workflows support
 - **Variable Resolution**: Template-based parameterization (inputs, env vars, step outputs)
 - **Retry Logic**: Configurable retry with exponential backoff
-- **Human-in-Loop Approvals**: Slack-based approval workflows with configurable permissions
+- **Human-in-Loop Approvals**: GitLab-native manual approval workflows with Slack review notifications
 - **.shiro Folder**: Organized project structure with auto-detection
 
 ## Human-in-Loop Approvals
 
-Shiro supports human-in-loop approval workflows via Slack integration. This allows you to pause workflow execution and wait for manual approval before proceeding.
+Shiro supports human-in-loop approval workflows without external callback infrastructure. A workflow can send a Slack review notification, pause, and resume only when a user manually plays the GitLab resume job.
 
 ### Approval Configuration
 
-Use the `slack.approve` module in your workflow to request approval:
+Use `slack.notify` with `pause: true` to send a GitLab review link and stop execution after the notification step:
 
 ```json
 {
   "id": "request_approval",
-  "type": "slack.approve",
+  "type": "slack.notify",
+  "pause": true,
   "config": {
     "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
     "channel": "#deployments",
-    "message": "Approve deployment to production?",
-    "timeout": 3600,
-    "poll_interval": 30,
-    "timeout_action": "fail",
-    "permissions": "users",
-    "allowed_users": ["@alice", "@bob", "@charlie"]
+    "message": "Review deployment to production. Click the GitLab button and play the manual resume job to approve.",
+    "gitlab_pipeline_url": "{{env.CI_SERVER_URL}}/{{env.CI_PROJECT_ID}}/-/pipelines/{{env.CI_PIPELINE_ID}}",
+    "button_text": "Review in GitLab"
   }
 }
 ```
@@ -57,38 +55,19 @@ Use the `slack.approve` module in your workflow to request approval:
 - `webhook_url`: Slack webhook URL (required)
 - `channel`: Slack channel to send to (optional)
 - `message`: Approval message (required)
-- `timeout`: Timeout in seconds (default: 3600)
-- `poll_interval`: Polling interval in seconds (default: 30)
-- `timeout_action`: Action on timeout - `fail`, `continue`, or `retry` (default: `fail`)
-- `permissions`: Permission mode - `anyone`, `users`, or `slack_permissions` (default: `anyone`)
-- `allowed_users`: List of allowed users when `permissions: users` (required for users mode)
+- `gitlab_pipeline_url`: GitLab pipeline URL for the review button (optional)
+- `button_text`: Review button text (optional, default: `Review in GitLab`)
+- `pause`: Set to `true` on the workflow step to stop after sending the notification
 
 ### State Storage
 
-Approval state can be stored in multiple backends:
+Workflow state can be stored in multiple backends:
 
 ```bash
-# Use memory store (default, for local development)
-export SHIRO_APPROVAL_STORE=memory
-
-# Use filesystem store
-export SHIRO_APPROVAL_STORE=filesystem
-
-# Use GitLab artifacts (for CI/CD)
-export SHIRO_APPROVAL_STORE=gitlab
+shiro run -workflow .shiro/workflow.json -state-store memory
+shiro run -workflow .shiro/workflow.json -state-store filesystem
+shiro run -workflow .shiro/workflow.json -state-store gitlab
 ```
-
-### Timeout Actions
-
-- `fail`: Workflow fails when approval times out (default)
-- `continue`: Workflow continues to next step when approval times out
-- `retry`: Resends approval request and continues polling when approval times out
-
-### Permission Modes
-
-- `anyone`: Anyone in the channel can approve
-- `users`: Only specified users can approve (requires `allowed_users`)
-- `slack_permissions`: Use Slack workspace permissions
 
 ### Example Workflow
 
@@ -97,12 +76,11 @@ See `examples/approval-workflow.json` for a complete example with approval step.
 ### Approval Flow
 
 1. Workflow reaches approval step
-2. Sends Slack message with approve/reject buttons
-3. Stores approval request in configured backend
-4. Polls backend for approval status
-5. On approval: continues to next step
-6. On rejection: workflow fails
-7. On timeout: executes configured timeout action
+2. Sends Slack message with a GitLab pipeline review button
+3. Saves workflow state and pauses
+4. User opens GitLab and manually plays the resume job to approve
+5. Resume job loads state, skips completed steps, and continues
+6. If the resume job is not played, the workflow remains stopped
 
 ## Quick Start
 
@@ -351,6 +329,8 @@ Sends notifications to Slack via webhooks.
 - `message` (required): Message content
 - `username`: Bot username
 - `icon_emoji`: Bot icon
+- `gitlab_pipeline_url`: GitLab pipeline URL for a review button
+- `button_text`: Review button label
 
 ### `git.diff`
 Performs git operations.

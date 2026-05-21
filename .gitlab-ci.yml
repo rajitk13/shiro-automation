@@ -42,7 +42,8 @@ approval-initial:
     - apt-get update && apt-get install -y git
     - go build -o shiro ./cmd/runtime
   script:
-    - ./shiro run examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab
+    - ./shiro validate -workflow examples/conditional-approval-workflow.json -config configs/models.yaml
+    - ./shiro run -workflow examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab -fresh
   artifacts:
     paths:
       - .shiro/
@@ -59,7 +60,8 @@ approval-resume:
     - apt-get update && apt-get install -y git
     - go build -o shiro ./cmd/runtime
   script:
-    - ./shiro run examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab
+    - ./shiro validate -workflow examples/conditional-approval-workflow.json -config configs/models.yaml
+    - ./shiro run -workflow examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab
   artifacts:
     paths:
       - .shiro/

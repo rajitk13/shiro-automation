@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/rkuthiala/shiro-automation/internal/modules"
@@ -44,18 +45,28 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 
 	// Extract configuration
 	webhookURL, ok := wfStep.Config["webhook_url"].(string)
-	if !ok {
+	if !ok || webhookURL == "" {
 		return nil, fmt.Errorf("webhook_url is required")
+	}
+	if err := validateHTTPURL("webhook_url", webhookURL); err != nil {
+		return nil, err
 	}
 
 	channel, _ := wfStep.Config["channel"].(string)
 	message, ok := wfStep.Config["message"].(string)
-	if !ok {
+	if !ok || message == "" {
 		return nil, fmt.Errorf("message is required")
 	}
+	username, _ := wfStep.Config["username"].(string)
+	iconEmoji, _ := wfStep.Config["icon_emoji"].(string)
 
 	// Check for GitLab pipeline URL for approval link
 	gitlabPipelineURL, _ := wfStep.Config["gitlab_pipeline_url"].(string)
+	if gitlabPipelineURL != "" {
+		if err := validateHTTPURL("gitlab_pipeline_url", gitlabPipelineURL); err != nil {
+			return nil, err
+		}
+	}
 	buttonText, _ := wfStep.Config["button_text"].(string)
 	if buttonText == "" {
 		buttonText = "Review in GitLab"
@@ -69,13 +80,25 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 	if channel != "" {
 		slackMsg["channel"] = channel
 	}
+	if username != "" {
+		slackMsg["username"] = username
+	}
+	if iconEmoji != "" {
+		slackMsg["icon_emoji"] = iconEmoji
+	}
 
 	// Add GitLab review button if pipeline URL is provided
 	if gitlabPipelineURL != "" {
-		slackMsg["attachments"] = []map[string]interface{}{
+		slackMsg["blocks"] = []map[string]interface{}{
 			{
-				"color": "#3AA3E3",
-				"text":  message,
+				"type": "section",
+				"text": map[string]interface{}{
+					"type": "mrkdwn",
+					"text": message,
+				},
+			},
+			{
+				"type": "actions",
 				"actions": []map[string]interface{}{
 					{
 						"type":  "button",
@@ -118,11 +141,26 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 	}
 
 	return map[string]interface{}{
-		"sent":    true,
-		"channel": channel,
-		"message": message,
-		"status":  "success",
+		"sent":                true,
+		"channel":             channel,
+		"message":             message,
+		"gitlab_pipeline_url": gitlabPipelineURL,
+		"status":              "success",
 	}, nil
+}
+
+func validateHTTPURL(field string, rawURL string) error {
+	parsedURL, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return fmt.Errorf("%s must be a valid URL", field)
+	}
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return fmt.Errorf("%s must use http or https", field)
+	}
+	if parsedURL.Host == "" {
+		return fmt.Errorf("%s must include a host", field)
+	}
+	return nil
 }
 
 // Metadata returns module metadata
@@ -195,6 +233,11 @@ func (m *SlackModule) Metadata() modules.ModuleMetadata {
 				Type:        "string",
 				Description: "Status of the operation",
 				Required:    true,
+			},
+			"gitlab_pipeline_url": {
+				Type:        "string",
+				Description: "GitLab pipeline URL used for review button",
+				Required:    false,
 			},
 		},
 	}

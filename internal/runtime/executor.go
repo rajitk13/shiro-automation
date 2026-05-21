@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/rkuthiala/shiro-automation/internal/errors"
@@ -86,7 +87,8 @@ func (e *Executor) Execute(
 
 		// Check if dependencies are satisfied
 		if !graph.dependenciesSatisfied(stepID, execCtx.Steps) {
-			return nil, errors.NewWorkflowError(wf.Name, stepID, "dependencies not satisfied", nil)
+			missingDeps := graph.missingDependencies(stepID, execCtx.Steps)
+			return nil, errors.NewWorkflowError(wf.Name, stepID, fmt.Sprintf("dependencies not satisfied: %s", strings.Join(missingDeps, ", ")), nil)
 		}
 
 		// Execute the step
@@ -106,7 +108,7 @@ func (e *Executor) Execute(
 		// Save state after each step
 		if e.stateStore != nil {
 			if err := e.stateStore.Save(ctx, wf.Name, execCtx); err != nil {
-				e.logger.Printf("Failed to save state after step %s: %v", stepID, err)
+				return execCtx, errors.NewWorkflowError(wf.Name, stepID, "failed to save workflow state", err)
 			}
 		}
 
@@ -139,6 +141,7 @@ func (e *Executor) executeStep(
 	if !ok {
 		return nil, errors.NewWorkflowError("", step.ID, "resolved config is not a map", nil)
 	}
+	step.Config = config
 
 	// Get module
 	module, err := e.registry.Get(step.Type)
@@ -161,7 +164,7 @@ func (e *Executor) executeStep(
 	var execErr error
 
 	if step.Retry != nil {
-		output, execErr = e.executeWithRetry(ctx, module, execCtx, step, config, step.Retry)
+		output, execErr = e.executeWithRetry(ctx, module, execCtx, step, step.Retry)
 	} else {
 		output, execErr = module.Run(ctx, execCtx, step)
 	}
@@ -184,7 +187,6 @@ func (e *Executor) executeWithRetry(
 	module modules.Module,
 	execCtx *workflow.ExecutionContext,
 	step workflow.Step,
-	_ map[string]interface{},
 	retryConfig *workflow.RetryConfig,
 ) (map[string]interface{}, error) {
 	maxAttempts := retryConfig.MaxAttempts

@@ -9,35 +9,11 @@ import (
 
 // GitLabStore is a GitLab artifacts-based state store
 type GitLabStore struct {
-	projectID    string
-	jobID        string
-	token        string
-	baseURL      string
 	artifactsDir string
 }
 
 // NewGitLabStore creates a new GitLab store
 func NewGitLabStore(config map[string]interface{}) (*GitLabStore, error) {
-	projectID, _ := config["project_id"].(string)
-	if projectID == "" {
-		projectID = os.Getenv("CI_PROJECT_ID")
-	}
-
-	jobID, _ := config["job_id"].(string)
-	if jobID == "" {
-		jobID = os.Getenv("CI_JOB_ID")
-	}
-
-	token := os.Getenv("CI_JOB_TOKEN")
-
-	baseURL, _ := config["base_url"].(string)
-	if baseURL == "" {
-		baseURL = os.Getenv("CI_SERVER_URL")
-		if baseURL == "" {
-			baseURL = "https://gitlab.com"
-		}
-	}
-
 	artifactsDir, _ := config["artifacts_dir"].(string)
 	if artifactsDir == "" {
 		artifactsDir = os.Getenv("CI_PROJECT_DIR")
@@ -47,10 +23,6 @@ func NewGitLabStore(config map[string]interface{}) (*GitLabStore, error) {
 	}
 
 	return &GitLabStore{
-		projectID:    projectID,
-		jobID:        jobID,
-		token:        token,
-		baseURL:      baseURL,
 		artifactsDir: artifactsDir,
 	}, nil
 }

@@ -76,8 +76,12 @@ func LoadWorkflow(data []byte) (*Workflow, error) {
 
 // LoadWorkflowFromFile loads a workflow from a file path
 func LoadWorkflowFromFile(path string) (*Workflow, error) {
-	// This will be implemented when we add file I/O
-	return nil, fmt.Errorf("not implemented")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, errors.NewValidationError("workflow", fmt.Sprintf("failed to read workflow file %s", path), err)
+	}
+
+	return LoadWorkflow(data)
 }
 
 // Validate performs basic validation on the workflow

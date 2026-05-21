@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 
 	"github.com/rkuthiala/shiro-automation/internal/config"
 	"github.com/rkuthiala/shiro-automation/internal/modules"
@@ -27,6 +28,7 @@ func RunCommand(args []string) {
 	configFile := flagSet.String("config", "", "Path to model configuration file")
 	stateStoreType := flagSet.String("state-store", "gitlab", "State store type (memory, filesystem, gitlab)")
 	shiroDir := flagSet.String("shiro-dir", ".shiro", "Path to .shiro directory")
+	fresh := flagSet.Bool("fresh", false, "Delete existing workflow state before running")
 	showHelp := flagSet.Bool("help", false, "Show help information")
 	flagSet.Parse(args)
 
@@ -152,6 +154,19 @@ func RunCommand(args []string) {
 
 	// Execute workflow
 	ctx := context.Background()
+	if *fresh {
+		exists, err := stateStore.Exists(ctx, wf.Name)
+		if err != nil {
+			log.Fatalf("Failed to check existing state: %v", err)
+		}
+		if exists {
+			if err := stateStore.Delete(ctx, wf.Name); err != nil {
+				log.Fatalf("Failed to delete existing state: %v", err)
+			}
+			logger.Printf("Deleted existing workflow state for fresh run: %s", wf.Name)
+		}
+	}
+
 	execCtx, err := executor.Execute(ctx, wf, wf.Inputs, env)
 	if err != nil {
 		log.Fatalf("Workflow execution failed: %v", err)
@@ -287,7 +302,14 @@ func splitEnv(envVar string) (string, string) {
 func outputResults(execCtx *workflow.ExecutionContext) {
 	fmt.Println("\n=== Workflow Results ===")
 
-	for stepID, result := range execCtx.Steps {
+	stepIDs := make([]string, 0, len(execCtx.Steps))
+	for stepID := range execCtx.Steps {
+		stepIDs = append(stepIDs, stepID)
+	}
+	sort.Strings(stepIDs)
+
+	for _, stepID := range stepIDs {
+		result := execCtx.Steps[stepID]
 		fmt.Printf("\nStep: %s\n", stepID)
 		fmt.Printf("  Success: %v\n", result.Success)
 		if result.Error != "" {
@@ -326,6 +348,7 @@ func printRunHelp() {
 	fmt.Println("  -config <file>     Path to model configuration file (auto-detected if not specified)")
 	fmt.Println("  -state-store <type> State store type: memory, filesystem, gitlab (default \"gitlab\")")
 	fmt.Println("  -shiro-dir <path>  Path to .shiro directory (default \".shiro\")")
+	fmt.Println("  -fresh             Delete existing workflow state before running")
 	fmt.Println("  -help              Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
