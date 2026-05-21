@@ -18,8 +18,7 @@
       "id": "review",
       "type": "ai.generate",
       "config": {
-        "provider": "ollama",
-        "model": "codellama:34b",
+        "provider": "codellama",
         "prompt": "Review this git diff and provide feedback:\n\n{{steps.get_diff.diff}}\n\nFocus on:\n1. Code quality and best practices\n2. Potential bugs or issues\n3. Security concerns\n4. Performance implications\n\nProvide specific, actionable feedback.",
         "system": "You are a senior code reviewer. Provide constructive, specific feedback on code changes.",
         "temperature": 0.3,

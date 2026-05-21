@@ -146,10 +146,7 @@ func (e *Executor) executeStep(
 	// Get module
 	module, err := e.registry.Get(step.Type)
 	if err != nil {
-		return &workflow.StepResult{
-			Success: false,
-			Error:   err.Error(),
-		}, nil
+		return nil, err
 	}
 
 	// Set timeout if specified
@@ -176,6 +173,7 @@ func (e *Executor) executeStep(
 
 	if execErr != nil {
 		result.Error = execErr.Error()
+		return result, execErr
 	}
 
 	return result, nil

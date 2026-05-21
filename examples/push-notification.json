@@ -18,8 +18,7 @@
       "id": "summarize",
       "type": "ai.generate",
       "config": {
-        "provider": "ollama",
-        "model": "llama3:8b",
+        "provider": "llama3",
         "prompt": "Summarize the changes in this push:\n\nFiles changed: {{steps.get_changes.files}}\n\nBranch: {{inputs.branch}}\n\nProvide a brief summary suitable for a team notification.",
         "system": "You are a helpful assistant that summarizes code changes for team notifications.",
         "temperature": 0.5,

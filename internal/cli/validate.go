@@ -41,21 +41,23 @@ func ValidateCommand(args []string) {
 		os.Exit(1)
 	}
 
-	if err := validateWorkflowFile(cfg.WorkflowFile); err != nil {
-		printValidationError(err)
-		os.Exit(1)
-	}
-
+	modelConfig := make(map[string]map[string]interface{})
 	if cfg.ConfigFile != "" {
-		if _, err := config.LoadModelConfig(cfg.ConfigFile); err != nil {
+		modelConfig, err = config.LoadModelConfig(cfg.ConfigFile)
+		if err != nil {
 			log.Fatalf("Config validation failed: %v", err)
 		}
+	}
+
+	if err := validateWorkflowFile(cfg.WorkflowFile, modelConfig); err != nil {
+		printValidationError(err)
+		os.Exit(1)
 	}
 
 	fmt.Printf("Workflow validation passed: %s\n", cfg.WorkflowFile)
 }
 
-func validateWorkflowFile(path string) error {
+func validateWorkflowFile(path string, modelConfig map[string]map[string]interface{}) error {
 	workflowData, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read workflow file: %w", err)
@@ -66,7 +68,64 @@ func validateWorkflowFile(path string) error {
 		return err
 	}
 
-	return wf.Validate()
+	validationErrors := errors.ValidationErrors{}
+	if err := wf.Validate(); err != nil {
+		if errs, ok := err.(errors.ValidationErrors); ok {
+			validationErrors = append(validationErrors, errs...)
+		} else {
+			return err
+		}
+	}
+	validationErrors = append(validationErrors, validateAIWorkflowConfig(wf, modelConfig)...)
+	if len(validationErrors) > 0 {
+		return validationErrors
+	}
+
+	return nil
+}
+
+func validateAIWorkflowConfig(wf *workflow.Workflow, modelConfig map[string]map[string]interface{}) errors.ValidationErrors {
+	validationErrors := errors.ValidationErrors{}
+	for _, step := range wf.Steps {
+		if step.Type != "ai.generate" {
+			continue
+		}
+
+		prompt, _ := step.Config["prompt"].(string)
+		if prompt == "" {
+			validationErrors = append(validationErrors, errors.NewValidationError(fmt.Sprintf("steps[%s].config.prompt", step.ID), "prompt is required for ai.generate", nil))
+		}
+
+		providerName, _ := step.Config["provider"].(string)
+		if providerName == "" {
+			providerName = resolveDefaultProviderName(modelConfig)
+		}
+
+		providerConfig, ok := modelConfig[providerName]
+		if !ok {
+			validationErrors = append(validationErrors, errors.NewValidationError(fmt.Sprintf("steps[%s].config.provider", step.ID), fmt.Sprintf("provider %q not found in model config", providerName), nil))
+			continue
+		}
+
+		stepModel, _ := step.Config["model"].(string)
+		configModel, _ := providerConfig["model"].(string)
+		if stepModel == "" && configModel == "" {
+			validationErrors = append(validationErrors, errors.NewValidationError(fmt.Sprintf("steps[%s].config.model", step.ID), fmt.Sprintf("model is required for provider %q: set config.model in the workflow step or model in config", providerName), nil))
+		}
+	}
+	return validationErrors
+}
+
+func resolveDefaultProviderName(modelConfig map[string]map[string]interface{}) string {
+	if _, ok := modelConfig["default"]; ok {
+		return "default"
+	}
+	if len(modelConfig) == 1 {
+		for name := range modelConfig {
+			return name
+		}
+	}
+	return "default"
 }
 
 func printValidationError(err error) {

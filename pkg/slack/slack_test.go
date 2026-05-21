@@ -46,6 +46,16 @@ func TestSlackNotifyIncludesGitLabReviewButton(t *testing.T) {
 	if _, ok := payload["blocks"]; !ok {
 		t.Fatal("payload missing blocks for GitLab review button")
 	}
+	blocks := payload["blocks"].([]interface{})
+	actions := blocks[1].(map[string]interface{})["actions"].([]interface{})
+	button := actions[0].(map[string]interface{})
+	text := button["text"].(map[string]interface{})
+	if text["type"] != "plain_text" {
+		t.Fatalf("button text type = %v, want plain_text", text["type"])
+	}
+	if text["text"] != "Review in GitLab" {
+		t.Fatalf("button text = %v, want Review in GitLab", text["text"])
+	}
 }
 
 func TestSlackNotifyRejectsInvalidURLs(t *testing.T) {

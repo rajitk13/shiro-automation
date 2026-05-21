@@ -3,6 +3,8 @@ package ai
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	aiprovider "github.com/rkuthiala/shiro-automation/internal/ai"
 	"github.com/rkuthiala/shiro-automation/internal/modules"
@@ -27,19 +29,35 @@ func NewOpenAIProvider(config *ProviderConfig) (Provider, error) {
 
 // AIModule implements the ai.generate module
 type AIModule struct {
-	providers map[string]Provider
+	providers     map[string]Provider
+	defaultModels map[string]string
 }
 
 // NewAIModule creates a new AI module
 func NewAIModule() *AIModule {
 	return &AIModule{
-		providers: make(map[string]Provider),
+		providers:     make(map[string]Provider),
+		defaultModels: make(map[string]string),
 	}
 }
 
 // AddProvider adds an AI provider
 func (m *AIModule) AddProvider(name string, provider Provider) {
 	m.providers[name] = provider
+}
+
+func (m *AIModule) AddProviderWithDefaultModel(name string, provider Provider, model string) {
+	m.providers[name] = provider
+	m.defaultModels[name] = model
+}
+
+func (m *AIModule) HasProvider(name string) bool {
+	_, ok := m.providers[name]
+	return ok
+}
+
+func (m *AIModule) DefaultModel(name string) string {
+	return m.defaultModels[name]
 }
 
 // Run executes the AI generation
@@ -52,22 +70,25 @@ func (m *AIModule) Run(ctx context.Context, stepCtx interface{}, step interface{
 	// Get provider name (default to "default")
 	providerName, _ := wfStep.Config["provider"].(string)
 	if providerName == "" {
-		providerName = "default"
+		providerName = m.resolveDefaultProvider()
 	}
 
 	provider, ok := m.providers[providerName]
 	if !ok {
-		return nil, fmt.Errorf("provider %s not found", providerName)
+		return nil, fmt.Errorf("provider %s not found; configure a provider named %q or set config.provider to one of: %s", providerName, "default", strings.Join(m.providerNames(), ", "))
 	}
 
 	// Build request
 	model, ok := wfStep.Config["model"].(string)
-	if !ok {
-		return nil, fmt.Errorf("model is required")
+	if !ok || model == "" {
+		model = m.defaultModels[providerName]
+	}
+	if model == "" {
+		return nil, fmt.Errorf("model is required for provider %s: set config.model in the workflow step or model in .shiro/config.yaml", providerName)
 	}
 
 	prompt, ok := wfStep.Config["prompt"].(string)
-	if !ok {
+	if !ok || prompt == "" {
 		return nil, fmt.Errorf("prompt is required")
 	}
 
@@ -109,6 +130,27 @@ func (m *AIModule) Run(ctx context.Context, stepCtx interface{}, step interface{
 	}
 
 	return output, nil
+}
+
+func (m *AIModule) resolveDefaultProvider() string {
+	if _, ok := m.providers["default"]; ok {
+		return "default"
+	}
+	if len(m.providers) == 1 {
+		for name := range m.providers {
+			return name
+		}
+	}
+	return "default"
+}
+
+func (m *AIModule) providerNames() []string {
+	names := make([]string, 0, len(m.providers))
+	for name := range m.providers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // Metadata returns module metadata

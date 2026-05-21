@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"testing"
 
@@ -22,6 +23,16 @@ func (m *captureModule) Run(ctx context.Context, stepCtx interface{}, step inter
 
 func (m *captureModule) Metadata() modules.ModuleMetadata {
 	return modules.ModuleMetadata{Name: "capture"}
+}
+
+type failingModule struct{}
+
+func (m *failingModule) Run(ctx context.Context, stepCtx interface{}, step interface{}) (map[string]interface{}, error) {
+	return nil, fmt.Errorf("module failed")
+}
+
+func (m *failingModule) Metadata() modules.ModuleMetadata {
+	return modules.ModuleMetadata{Name: "failing"}
 }
 
 func TestExecutorUsesResolvedConfigAndPauses(t *testing.T) {
@@ -61,5 +72,34 @@ func TestExecutorUsesResolvedConfigAndPauses(t *testing.T) {
 	}
 	if _, ok := execCtx.Steps["after"]; !ok {
 		t.Fatal("step after pause did not execute during resume")
+	}
+}
+
+func TestExecutorFailsOnModuleErrorBeforePause(t *testing.T) {
+	registry := modules.NewRegistry()
+	if err := registry.Register("failing", &failingModule{}); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+
+	store := state.NewMemoryStore()
+	executor := NewExecutor(registry, log.Default())
+	executor.SetStateStore(store)
+
+	wf := &workflow.Workflow{
+		Name: "approval-test",
+		Steps: []workflow.Step{
+			{ID: "approval", Type: "failing", Pause: true, Config: map[string]interface{}{}},
+		},
+	}
+
+	execCtx, err := executor.Execute(context.Background(), wf, nil, nil)
+	if err == nil {
+		t.Fatal("Execute() error = nil, want module failure")
+	}
+	if _, ok := execCtx.Steps["approval"]; ok {
+		t.Fatal("failed approval step was persisted")
+	}
+	if exists, err := store.Exists(context.Background(), wf.Name); err != nil || exists {
+		t.Fatalf("state exists = %v, err = %v, want no state", exists, err)
 	}
 }

@@ -213,12 +213,15 @@ func registerAIProviders(modelConfig map[string]map[string]interface{}, logger *
 	for modelName, modelDef := range modelConfig {
 		var provider ai.Provider
 		var err error
+		defaultModel, _ := modelDef["model"].(string)
 
-		// Check if type field exists
 		modelType, ok := modelDef["type"].(string)
 		if !ok {
-			logger.Printf("Skipping model %s: missing type field", modelName)
-			continue
+			modelType, ok = modelDef["provider"].(string)
+			if !ok {
+				logger.Printf("Skipping model %s: missing type/provider field", modelName)
+				continue
+			}
 		}
 
 		switch modelType {
@@ -231,7 +234,7 @@ func registerAIProviders(modelConfig map[string]map[string]interface{}, logger *
 			providerConfig := &ai.ProviderConfig{
 				Type:    "ollama",
 				BaseURL: baseURL,
-				Model:   modelName,
+				Model:   defaultModel,
 			}
 			provider, err = ai.NewOllamaProvider(providerConfig)
 		case "openai":
@@ -253,7 +256,7 @@ func registerAIProviders(modelConfig map[string]map[string]interface{}, logger *
 				Type:          "openai",
 				BaseURL:       baseURL,
 				APIKey:        apiKey,
-				Model:         modelName,
+				Model:         defaultModel,
 				SkipTLSVerify: skipTLSVerify,
 			}
 			provider, err = ai.NewOpenAIProvider(providerConfig)
@@ -267,8 +270,7 @@ func registerAIProviders(modelConfig map[string]map[string]interface{}, logger *
 			continue
 		}
 
-		aiModule.AddProvider(modelName, provider)
-		defer provider.Close()
+		aiModule.AddProviderWithDefaultModel(modelName, provider, defaultModel)
 	}
 
 	return aiModule, nil

@@ -101,8 +101,11 @@ func (m *SlackModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 				"type": "actions",
 				"actions": []map[string]interface{}{
 					{
-						"type":  "button",
-						"text":  buttonText,
+						"type": "button",
+						"text": map[string]interface{}{
+							"type": "plain_text",
+							"text": buttonText,
+						},
 						"url":   gitlabPipelineURL,
 						"style": "primary",
 					},
