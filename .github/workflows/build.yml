@@ -76,9 +76,6 @@ jobs:
           - os: macos-latest
             goos: darwin
             goarch: arm64
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
