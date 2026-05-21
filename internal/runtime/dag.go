@@ -92,8 +92,8 @@ func (g *executionGraph) dependenciesSatisfied(stepID string, completedSteps map
 	}
 
 	for _, dep := range deps {
-		result, completed := completedSteps[dep]
-		if !completed || !result.Success {
+		_, completed := completedSteps[dep]
+		if !completed {
 			return false
 		}
 	}
