@@ -9,23 +9,33 @@ import (
 	"github.com/rkuthiala/shiro-automation/internal/errors"
 )
 
+// WorkflowSettings controls workflow execution behavior
+type WorkflowSettings struct {
+	SaveResults  bool   `json:"save_results,omitempty"`  // Whether to save results to state (default: true)
+	QuietMode    bool   `json:"quiet_mode,omitempty"`    // Whether to suppress console output (default: false)
+	OutputFormat string `json:"output_format,omitempty"` // Output format: text, json (default: text)
+}
+
 // Workflow represents a complete workflow definition
 type Workflow struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description,omitempty"`
 	Inputs      map[string]interface{} `json:"inputs,omitempty"`
 	Steps       []Step                 `json:"steps"`
+	Settings    WorkflowSettings       `json:"settings,omitempty"`
 }
 
 // Step represents a single step in the workflow
 type Step struct {
-	ID        string                 `json:"id"`
-	Type      string                 `json:"type"`
-	Config    map[string]interface{} `json:"config,omitempty"`
-	DependsOn []string               `json:"depends_on,omitempty"`
-	Pause     bool                   `json:"pause,omitempty"`
-	Retry     *RetryConfig           `json:"retry,omitempty"`
-	Timeout   int                    `json:"timeout,omitempty"` // seconds
+	ID         string                 `json:"id"`
+	Type       string                 `json:"type"`
+	Config     map[string]interface{} `json:"config,omitempty"`
+	DependsOn  []string               `json:"depends_on,omitempty"`
+	Pause      bool                   `json:"pause,omitempty"`
+	Retry      *RetryConfig           `json:"retry,omitempty"`
+	Timeout    int                    `json:"timeout,omitempty"`     // seconds
+	Quiet      bool                   `json:"quiet,omitempty"`       // Suppress console output for this step
+	SaveOutput bool                   `json:"save_output,omitempty"` // Save output to state (default: true)
 }
 
 // RetryConfig defines retry behavior for a step

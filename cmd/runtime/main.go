@@ -22,12 +22,22 @@ func main() {
 		cli.RunCommand(args)
 	case "validate":
 		cli.ValidateCommand(args)
+	case "set":
+		cli.SetCommand(args)
+	case "get":
+		cli.GetCommand(args)
+	case "delete":
+		cli.DeleteCommand(args)
 	case "add":
 		cli.ModuleCommand(args)
 	case "search":
 		cli.ModuleCommand(args)
 	case "list":
-		cli.ModuleCommand(args)
+		if len(args) > 0 && args[0] == "modules" {
+			cli.ModuleCommand(append([]string{"list"}, args...))
+		} else {
+			cli.ListCommand(args)
+		}
 	case "remove":
 		cli.ModuleCommand(args)
 	case "install":
@@ -64,6 +74,10 @@ func printHelp() {
 	println("  init              Initialize a Shiro project")
 	println("  run               Run a workflow")
 	println("  validate          Validate a workflow")
+	println("  set <key> <val>   Store a value in data store")
+	println("  get <key>         Retrieve a value from data store")
+	println("  delete <key>      Delete a value from data store")
+	println("  list              List data store keys")
 	println("  add module        Add a module")
 	println("  list modules      List available modules")
 	println("  search module     Search for modules")
@@ -77,6 +91,8 @@ func printHelp() {
 	println("  shiro init")
 	println("  shiro run")
 	println("  shiro validate -workflow .shiro/workflow.json")
+	println("  shiro set build_id 12345")
+	println("  shiro get build_id")
 	println("  shiro add module jira")
 	println("  shiro list modules")
 	println()

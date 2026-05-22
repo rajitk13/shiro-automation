@@ -171,6 +171,15 @@ func (e *Executor) executeStep(
 		Output:  output,
 	}
 
+	// Respect save_output setting (default: true)
+	if step.SaveOutput == false {
+		// Don't save output to state, only keep success/error status
+		result.Output = map[string]interface{}{
+			"_saved": false,
+			"_note":  "Output not saved (save_output: false)",
+		}
+	}
+
 	if execErr != nil {
 		result.Error = execErr.Error()
 		return result, execErr

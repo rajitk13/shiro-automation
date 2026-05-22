@@ -15,8 +15,10 @@ import (
 	"github.com/rkuthiala/shiro-automation/internal/state"
 	"github.com/rkuthiala/shiro-automation/internal/workflow"
 	"github.com/rkuthiala/shiro-automation/pkg/ai"
+	"github.com/rkuthiala/shiro-automation/pkg/data"
 	"github.com/rkuthiala/shiro-automation/pkg/git"
 	printpkg "github.com/rkuthiala/shiro-automation/pkg/print"
+	"github.com/rkuthiala/shiro-automation/pkg/shell"
 	"github.com/rkuthiala/shiro-automation/pkg/slack"
 )
 
@@ -149,6 +151,21 @@ func RunCommand(args []string) {
 	// Always set state store for pause/resume support
 	executor.SetStateStore(stateStore)
 
+	// Register data module with state store
+	dataModule := data.NewDataModule(stateStore)
+	if err := registry.Register("data.store", dataModule); err != nil {
+		log.Fatalf("Failed to register data module: %v", err)
+	}
+	if err := registry.Register("data.load", dataModule); err != nil {
+		log.Fatalf("Failed to register data.load module: %v", err)
+	}
+	if err := registry.Register("data.delete", dataModule); err != nil {
+		log.Fatalf("Failed to register data.delete module: %v", err)
+	}
+	if err := registry.Register("data.exists", dataModule); err != nil {
+		log.Fatalf("Failed to register data.exists module: %v", err)
+	}
+
 	// Load environment variables
 	env := loadEnvironment()
 
@@ -177,8 +194,8 @@ func RunCommand(args []string) {
 		logger.Printf("Failed to save state: %v", err)
 	}
 
-	// Output results
-	outputResults(execCtx)
+	// Output results (respect quiet mode)
+	outputResults(execCtx, wf)
 }
 
 // registerBuiltInModules registers the built-in modules
@@ -199,6 +216,12 @@ func registerBuiltInModules(registry *modules.Registry) error {
 	// Register Print module
 	printModule := printpkg.NewPrintModule()
 	if err := registry.Register("print", printModule); err != nil {
+		return err
+	}
+
+	// Register Shell module
+	shellModule := shell.NewShellModule()
+	if err := registry.Register("shell.exec", shellModule); err != nil {
 		return err
 	}
 
@@ -300,8 +323,13 @@ func splitEnv(envVar string) (string, string) {
 	return envVar, ""
 }
 
-// outputResults outputs workflow execution results
-func outputResults(execCtx *workflow.ExecutionContext) {
+// outputResults outputs workflow execution results (respects quiet mode)
+func outputResults(execCtx *workflow.ExecutionContext, wf *workflow.Workflow) {
+	// Check if workflow is in quiet mode
+	if wf.Settings.QuietMode {
+		return
+	}
+
 	fmt.Println("\n=== Workflow Results ===")
 
 	stepIDs := make([]string, 0, len(execCtx.Steps))
