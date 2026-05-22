@@ -112,7 +112,7 @@ func generateRegistryCode(registry *RegistryConfig) string {
 			factory := config.Factory
 			if factory == "" {
 				// Default factory name: New<Module>Module
-				factory = fmt.Sprintf("New%sModule", strings.Title(name))
+				factory = fmt.Sprintf("New%sModule", capitalize(name))
 			}
 			sb.WriteString(fmt.Sprintf("\tif err := registry.Register(\"%s\", %s.%s()); err != nil {\n", name, alias, factory))
 			sb.WriteString("\t\treturn err\n")
@@ -159,4 +159,12 @@ func getExternalModules(registry *RegistryConfig) map[string]ModuleConfig {
 	}
 
 	return external
+}
+
+// capitalize capitalizes the first letter of a string
+func capitalize(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.ToUpper(s[:1]) + strings.ToLower(s[1:])
 }
