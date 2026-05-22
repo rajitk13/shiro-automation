@@ -224,6 +224,13 @@ func (d *Discoverer) ListBuiltinModules() []string {
 	return names
 }
 
+// GetRegistry returns the loaded registry configuration
+func (d *Discoverer) GetRegistry() *RegistryConfig {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.registry
+}
+
 // CreateBuiltinModule creates a built-in module instance using its registered factory
 func (d *Discoverer) CreateBuiltinModule(name string) (interface{}, error) {
 	d.mu.RLock()

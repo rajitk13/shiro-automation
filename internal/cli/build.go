@@ -39,23 +39,61 @@ func BuildCommand(args []string) {
 	}
 	fmt.Println("✓ Generated internal/cli/registry.go")
 
-	// Step 2: Run go mod tidy
+	// Step 2: Fetch external module packages
+	fmt.Println("Fetching external module packages...")
+	if err := fetchExternalPackages(registryPath); err != nil {
+		log.Fatalf("✗ Failed to fetch external packages: %v", err)
+	}
+	fmt.Println("✓ Fetched external packages")
+
+	// Step 3: Run go mod tidy
 	fmt.Println("Tidying Go modules...")
 	if err := tidyModules(); err != nil {
 		log.Fatalf("✗ Failed to tidy modules: %v", err)
 	}
 	fmt.Println("✓ Tidied modules")
 
-	// Step 3: Build binary
+	// Step 4: Build binary
 	fmt.Println("Building shiro binary...")
 	if err := buildBinary(*output, *ldflags); err != nil {
 		log.Fatalf("✗ Build failed: %v", err)
 	}
 
-	// Step 4: Report success
+	// Step 5: Report success
 	fmt.Printf("\n✓ Built %s\n", *output)
 	fmt.Println("\nRegistered modules:")
 	listModulesForBuild()
+}
+
+// fetchExternalPackages runs 'go get' for all external builtin modules
+func fetchExternalPackages(registryPath string) error {
+	// Load registry
+	discoverer := modules.NewDiscoverer(registryPath, nil)
+	if err := discoverer.LoadRegistry(); err != nil {
+		return fmt.Errorf("failed to load registry: %w", err)
+	}
+
+	// Get external modules
+	external := modules.GetExternalModules(discoverer.GetRegistry())
+	if len(external) == 0 {
+		return nil
+	}
+
+	fmt.Printf("Fetching %d external module(s)...\n", len(external))
+	for name, config := range external {
+		if config.Package == "" {
+			continue
+		}
+		fmt.Printf("  Fetching %s (%s)...\n", name, config.Package)
+		cmd := exec.Command("go", "get", config.Package)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("Warning: Failed to fetch %s: %v\n", config.Package, err)
+			// Continue with other packages, don't fail entirely
+		}
+	}
+	return nil
 }
 
 // tidyModules runs go mod tidy

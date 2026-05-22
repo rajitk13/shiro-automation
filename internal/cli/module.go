@@ -172,10 +172,16 @@ func addModule(args []string) {
 			log.Fatalf("Failed to add module: %v", err)
 		}
 
-		// Run go get to add the package
-		fmt.Printf("Adding Go package %s...\n", config.Package)
-		if err := goGetPackage(config.Package); err != nil {
-			log.Fatalf("Failed to get package: %v\nRun 'go get %s' manually if needed.", err, config.Package)
+		// Run go get to add the package (only if go.mod exists)
+		if _, err := os.Stat("go.mod"); err == nil {
+			fmt.Printf("Adding Go package %s...\n", config.Package)
+			if err := goGetPackage(config.Package); err != nil {
+				fmt.Printf("Warning: Failed to get package: %v\n", err)
+				fmt.Printf("Run 'go get %s' manually or use 'shiro build' from source tree.\n", config.Package)
+			}
+		} else {
+			fmt.Printf("Note: go.mod not found, skipping 'go get %s'\n", config.Package)
+			fmt.Println("Run 'shiro build' from shiro source tree to fetch external modules.")
 		}
 
 		fmt.Printf("✓ Module '%s' added successfully!\n", moduleName)

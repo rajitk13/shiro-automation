@@ -54,7 +54,7 @@ func generateRegistryCode(registry *RegistryConfig) string {
 	sb.WriteString("\t\"github.com/rkuthiala/shiro-automation/pkg/slack\"\n")
 
 	// External module imports
-	externalModules := getExternalModules(registry)
+	externalModules := GetExternalModules(registry)
 	if len(externalModules) > 0 {
 		sb.WriteString("\n\t// External modules added via 'shiro add module'\n")
 		for name, config := range externalModules {
@@ -145,8 +145,8 @@ func generateRegistryCode(registry *RegistryConfig) string {
 	return sb.String()
 }
 
-// getExternalModules returns only builtin type modules from registry
-func getExternalModules(registry *RegistryConfig) map[string]ModuleConfig {
+// GetExternalModules returns only builtin type modules from registry
+func GetExternalModules(registry *RegistryConfig) map[string]ModuleConfig {
 	external := make(map[string]ModuleConfig)
 	if registry == nil || registry.Modules == nil {
 		return external
