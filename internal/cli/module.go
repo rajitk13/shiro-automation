@@ -154,8 +154,49 @@ func addModule(args []string) {
 
 	var config modules.ModuleConfig
 
-	// Check if it's a builtin type module
-	if moduleYAML != nil && moduleYAML.Type == "builtin" {
+	if moduleYAML != nil && moduleYAML.Type == "subprocess" {
+		// Subprocess plugin module - download pre-built binary
+		artifactURL := moduleYAML.ArtifactURL
+		if artifactURL == "" {
+			// Build default artifact URL from repo releases
+			binaryName := moduleYAML.Binary
+			if binaryName == "" {
+				binaryName = fmt.Sprintf("shiro-%s", moduleName)
+			}
+			artifactURL = fmt.Sprintf("https://github.com/%s/releases/latest/download/%s-%s",
+				repoPath, binaryName, modules.PlatformSuffix())
+		}
+
+		insecureTLS := os.Getenv("SHIRO_INSECURE_TLS") == "1" || os.Getenv("SHIRO_INSECURE_TLS") == "true"
+		pluginsDir := ".shiro/plugins"
+		_, err := modules.DownloadSubprocessModule(moduleName, artifactURL, pluginsDir, insecureTLS)
+		if err != nil {
+			log.Fatalf("Failed to download module binary: %v", err)
+		}
+
+		config = modules.ModuleConfig{
+			Name:        moduleName,
+			Type:        "subprocess",
+			Description: moduleYAML.Description,
+			Version:     moduleYAML.Version,
+			Source:      metadata.Repository,
+		}
+		if err := discoverer.AddModule(moduleName, config); err != nil {
+			log.Fatalf("Failed to add module to registry: %v", err)
+		}
+
+		fmt.Printf("✓ Module '%s' added successfully!\n", moduleName)
+		fmt.Println("Run 'shiro run' to use the new module — no rebuild needed.")
+
+		if len(moduleYAML.Credentials) > 0 {
+			fmt.Println("\nRequired credentials:")
+			for _, cred := range moduleYAML.Credentials {
+				if cred.Required {
+					fmt.Printf("  - %s: %s\n", cred.Name, cred.Description)
+				}
+			}
+		}
+	} else if moduleYAML != nil && moduleYAML.Type == "builtin" {
 		// Builtin (compiled) module
 		config = modules.ModuleConfig{
 			Name:        metadata.Name,
@@ -168,17 +209,14 @@ func addModule(args []string) {
 			Factory:     moduleYAML.Factory,
 		}
 
-		// Validate required fields
 		if config.Package == "" {
 			log.Fatalf("Builtin module requires 'package' field in module.yaml")
 		}
 
-		// Add to registry
 		if err := discoverer.AddModule(moduleName, config); err != nil {
 			log.Fatalf("Failed to add module: %v", err)
 		}
 
-		// Run go get to add the package (only if go.mod exists)
 		if _, err := os.Stat("go.mod"); err == nil {
 			fmt.Printf("Adding Go package %s...\n", config.Package)
 			if err := goGetPackage(config.Package); err != nil {
@@ -186,7 +224,6 @@ func addModule(args []string) {
 				fmt.Printf("Run 'go get %s' manually or use 'shiro build' from source tree.\n", config.Package)
 			}
 		} else {
-			// Auto-rebuild: clone shiro source, add module, build, replace binary
 			fmt.Println("Note: go.mod not found, rebuilding shiro with module...")
 			if err := rebuildShiroWithModule(config.Package); err != nil {
 				fmt.Printf("Warning: Auto-rebuild failed: %v\n", err)
@@ -195,18 +232,7 @@ func addModule(args []string) {
 		}
 
 		fmt.Printf("✓ Module '%s' added successfully!\n", moduleName)
-		fmt.Printf("Package: %s\n", config.Package)
 		fmt.Println("\nRun 'shiro build' to compile with the new module.")
-
-		// Show credentials if defined
-		if len(moduleYAML.Credentials) > 0 {
-			fmt.Println("\nRequired credentials:")
-			for _, cred := range moduleYAML.Credentials {
-				if cred.Required {
-					fmt.Printf("  - %s: %s\n", cred.Name, cred.Description)
-				}
-			}
-		}
 	} else {
 		// HTTP-based module (original behavior)
 		config = modules.ModuleConfig{
@@ -218,7 +244,6 @@ func addModule(args []string) {
 			Docs:        fmt.Sprintf("%s/blob/main/README.md", metadata.Repository),
 		}
 
-		// Add to registry
 		if err := discoverer.AddModule(moduleName, config); err != nil {
 			log.Fatalf("Failed to add module: %v", err)
 		}
@@ -422,6 +447,8 @@ type ModuleYAML struct {
 	Factory     string             `yaml:"factory"`
 	Description string             `yaml:"description"`
 	Version     string             `yaml:"version"`
+	Binary      string             `yaml:"binary"`
+	ArtifactURL string             `yaml:"artifact_url"`
 	Credentials []ModuleCredential `yaml:"credentials"`
 }
 

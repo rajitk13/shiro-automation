@@ -124,6 +124,9 @@ func RunCommand(args []string) {
 		log.Fatalf("Failed to register modules: %v", err)
 	}
 
+	// Discover and register subprocess plugin modules from .shiro/plugins/ and PATH
+	modules.DiscoverSubprocessModules(registry, cfg.ShiroDir)
+
 	// Register AI providers
 	aiModule, err := registerAIProviders(modelConfig, logger)
 	if err != nil {
