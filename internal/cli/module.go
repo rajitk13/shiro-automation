@@ -67,6 +67,11 @@ func listModules() {
 
 // addModule adds a module to the registry
 func addModule(args []string) {
+	// Skip optional "module" keyword (allows `shiro add module <repo>`)
+	if len(args) > 0 && args[0] == "module" {
+		args = args[1:]
+	}
+
 	// Check if it's a GitHub URL or a module name
 	var moduleName, gitURL string
 	var isGitURL bool
