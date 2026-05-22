@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -416,12 +417,26 @@ type ModuleCredential struct {
 	Secret      bool   `yaml:"secret"`
 }
 
+// getHTTPClient returns an HTTP client, optionally with TLS verification disabled
+func getHTTPClient() *http.Client {
+	if os.Getenv("SHIRO_INSECURE_TLS") == "1" || os.Getenv("SHIRO_INSECURE_TLS") == "true" {
+		return &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+	}
+	return &http.Client{}
+}
+
 // fetchModuleYAML fetches and parses module.yaml from a GitHub repository
 func fetchModuleYAML(client *modules.GitHubClient, repo string) (*ModuleYAML, error) {
+	httpClient := getHTTPClient()
+
 	// Fetch module.yaml from GitHub
 	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/main/module.yaml", repo)
 
-	resp, err := http.Get(url)
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch module.yaml: %w", err)
 	}
@@ -430,7 +445,7 @@ func fetchModuleYAML(client *modules.GitHubClient, repo string) (*ModuleYAML, er
 	if resp.StatusCode != http.StatusOK {
 		// Try 'master' branch if 'main' fails
 		url = fmt.Sprintf("https://raw.githubusercontent.com/%s/master/module.yaml", repo)
-		resp, err = http.Get(url)
+		resp, err = httpClient.Get(url)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch module.yaml from master: %w", err)
 		}

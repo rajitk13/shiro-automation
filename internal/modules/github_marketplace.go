@@ -1,10 +1,12 @@
 package modules
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -16,8 +18,17 @@ type GitHubClient struct {
 
 // NewGitHubClient creates a new GitHub client
 func NewGitHubClient(token string) *GitHubClient {
+	client := &http.Client{}
+
+	// Allow insecure TLS if SHIRO_INSECURE_TLS is set
+	if os.Getenv("SHIRO_INSECURE_TLS") == "1" || os.Getenv("SHIRO_INSECURE_TLS") == "true" {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	return &GitHubClient{
-		httpClient: &http.Client{},
+		httpClient: client,
 		token:      token,
 	}
 }
