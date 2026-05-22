@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/rkuthiala/shiro-automation/internal/modules"
@@ -180,8 +181,12 @@ func addModule(args []string) {
 				fmt.Printf("Run 'go get %s' manually or use 'shiro build' from source tree.\n", config.Package)
 			}
 		} else {
-			fmt.Printf("Note: go.mod not found, skipping 'go get %s'\n", config.Package)
-			fmt.Println("Run 'shiro build' from shiro source tree to fetch external modules.")
+			// Auto-rebuild: clone shiro source, add module, build, replace binary
+			fmt.Println("Note: go.mod not found, rebuilding shiro with module...")
+			if err := rebuildShiroWithModule(config.Package); err != nil {
+				fmt.Printf("Warning: Auto-rebuild failed: %v\n", err)
+				fmt.Println("Run 'shiro build' from shiro source tree manually.")
+			}
 		}
 
 		fmt.Printf("✓ Module '%s' added successfully!\n", moduleName)
@@ -476,4 +481,84 @@ func goGetPackage(pkg string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// rebuildShiroWithModule clones shiro source, adds module, and rebuilds binary in-place
+func rebuildShiroWithModule(pkg string) error {
+	// Get current binary path
+	currentBinary, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get current binary path: %w", err)
+	}
+
+	// Parse SHIRO_SOURCE env var (format: "repo" or "repo@branch")
+	sourceRepo := os.Getenv("SHIRO_SOURCE")
+	if sourceRepo == "" {
+		sourceRepo = "github.com/rajitk13/shiro-automation"
+	}
+
+	branch := "master"
+	if strings.Contains(sourceRepo, "@") {
+		parts := strings.SplitN(sourceRepo, "@", 2)
+		sourceRepo = parts[0]
+		branch = parts[1]
+	}
+
+	// Create temp directory
+	tempDir, err := os.MkdirTemp("", "shiro-build-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	fmt.Printf("Cloning shiro source from %s@%s...\n", sourceRepo, branch)
+	cloneCmd := exec.Command("git", "clone", "-b", branch, "--depth", "1",
+		fmt.Sprintf("https://%s.git", sourceRepo), tempDir)
+	cloneCmd.Stdout = os.Stdout
+	cloneCmd.Stderr = os.Stderr
+	if err := cloneCmd.Run(); err != nil {
+		return fmt.Errorf("failed to clone shiro source: %w", err)
+	}
+
+	// Copy registry to temp dir
+	localRegistry := ".shiro/modules/registry.yaml"
+	tempRegistry := filepath.Join(tempDir, ".shiro/modules/registry.yaml")
+	if err := os.MkdirAll(filepath.Dir(tempRegistry), 0755); err != nil {
+		return fmt.Errorf("failed to create registry dir: %w", err)
+	}
+	if data, err := os.ReadFile(localRegistry); err == nil {
+		if err := os.WriteFile(tempRegistry, data, 0644); err != nil {
+			return fmt.Errorf("failed to copy registry: %w", err)
+		}
+	}
+
+	// Run go get for the module package
+	fmt.Printf("Fetching module package %s...\n", pkg)
+	getCmd := exec.Command("go", "get", pkg)
+	getCmd.Dir = tempDir
+	getCmd.Stdout = os.Stdout
+	getCmd.Stderr = os.Stderr
+	if err := getCmd.Run(); err != nil {
+		return fmt.Errorf("failed to get package: %w", err)
+	}
+
+	// Build new binary
+	fmt.Printf("Building shiro binary at %s...\n", currentBinary)
+	buildCmd := exec.Command("go", "build", "-o", currentBinary, "./cmd/runtime")
+	buildCmd.Dir = tempDir
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("failed to build binary: %w", err)
+	}
+
+	// Copy updated .shiro/modules back
+	if data, err := os.ReadFile(tempRegistry); err == nil {
+		if err := os.WriteFile(localRegistry, data, 0644); err != nil {
+			fmt.Printf("Warning: failed to update local registry: %v\n", err)
+		}
+	}
+
+	fmt.Printf("✓ Rebuilt shiro binary with module at %s\n", currentBinary)
+	return nil
 }
