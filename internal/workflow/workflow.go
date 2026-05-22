@@ -35,7 +35,7 @@ type Step struct {
 	Retry      *RetryConfig           `json:"retry,omitempty"`
 	Timeout    int                    `json:"timeout,omitempty"`     // seconds
 	Quiet      bool                   `json:"quiet,omitempty"`       // Suppress console output for this step
-	SaveOutput bool                   `json:"save_output,omitempty"` // Save output to state (default: true)
+	SaveOutput *bool                  `json:"save_output,omitempty"` // Save output to state (default: true)
 }
 
 // RetryConfig defines retry behavior for a step

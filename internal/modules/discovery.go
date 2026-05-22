@@ -15,16 +15,20 @@ import (
 
 // ModuleConfig represents a module's configuration from the registry
 type ModuleConfig struct {
-	Name        string                 `yaml:"name"`
-	Type        string                 `yaml:"type"`                // "builtin" or "http"
-	Endpoint    string                 `yaml:"endpoint,omitempty"`  // Deprecated, use endpoints
-	Endpoints   []string               `yaml:"endpoints,omitempty"` // Multiple endpoints for load balancing
-	Config      string                 `yaml:"config,omitempty"`
-	Version     string                 `yaml:"version,omitempty"`
-	Description string                 `yaml:"description"`
-	Source      string                 `yaml:"source,omitempty"` // GitHub repo URL
-	Docs        string                 `yaml:"docs,omitempty"`   // Documentation URL
-	Extra       map[string]interface{} `yaml:",inline"`
+	Name        string   `yaml:"name"`
+	Type        string   `yaml:"type"`                // "builtin" or "http"
+	Endpoint    string   `yaml:"endpoint,omitempty"`  // Deprecated, use endpoints
+	Endpoints   []string `yaml:"endpoints,omitempty"` // Multiple endpoints for load balancing
+	Config      string   `yaml:"config,omitempty"`
+	Version     string   `yaml:"version,omitempty"`
+	Description string   `yaml:"description"`
+	Source      string   `yaml:"source,omitempty"` // GitHub repo URL
+	Docs        string   `yaml:"docs,omitempty"`   // Documentation URL
+	// Fields for builtin modules (external compiled modules)
+	Package string                 `yaml:"package,omitempty"`  // Go package import path
+	Factory string                 `yaml:"factory,omitempty"`  // Factory function name (default: New<Module>Module)
+	AddedAt string                 `yaml:"added_at,omitempty"` // Timestamp when added
+	Extra   map[string]interface{} `yaml:",inline"`
 }
 
 // ModuleReviews represents review information for a module

@@ -48,6 +48,8 @@ func main() {
 		cli.ModuleCommand(args)
 	case "module":
 		cli.ModuleCommand(args)
+	case "build":
+		cli.BuildCommand(args)
 	case "help", "-help", "--help":
 		printHelp()
 	default:
@@ -74,6 +76,7 @@ func printHelp() {
 	println("  init              Initialize a Shiro project")
 	println("  run               Run a workflow")
 	println("  validate          Validate a workflow")
+	println("  build             Build shiro with all modules")
 	println("  set <key> <val>   Store a value in data store")
 	println("  get <key>         Retrieve a value from data store")
 	println("  delete <key>      Delete a value from data store")
@@ -91,6 +94,7 @@ func printHelp() {
 	println("  shiro init")
 	println("  shiro run")
 	println("  shiro validate -workflow .shiro/workflow.json")
+	println("  shiro build")
 	println("  shiro set build_id 12345")
 	println("  shiro get build_id")
 	println("  shiro add module jira")

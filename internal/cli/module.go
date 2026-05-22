@@ -3,10 +3,13 @@ package cli
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/rkuthiala/shiro-automation/internal/modules"
+	"gopkg.in/yaml.v3"
 )
 
 // ModuleCommand handles module-related commands
@@ -134,23 +137,79 @@ func addModule(args []string) {
 		log.Fatalf("Failed to load registry: %v", err)
 	}
 
-	config := modules.ModuleConfig{
-		Name:        metadata.Name,
-		Type:        "http",
-		Description: metadata.Description,
-		Version:     "1.0.0",
-		Source:      metadata.Repository,
-		Docs:        fmt.Sprintf("%s/blob/main/README.md", metadata.Repository),
+	// Fetch module.yaml for additional metadata (type, package, factory, etc.)
+	moduleYAML, err := fetchModuleYAML(githubClient, repoPath)
+	if err != nil {
+		fmt.Printf("Warning: Could not fetch module.yaml: %v\n", err)
+		fmt.Println("Falling back to HTTP module type.")
+		moduleYAML = nil
 	}
 
-	// Add to registry
-	if err := discoverer.AddModule(moduleName, config); err != nil {
-		log.Fatalf("Failed to add module: %v", err)
-	}
+	var config modules.ModuleConfig
 
-	fmt.Printf("Module '%s' added successfully!\n", moduleName)
-	fmt.Printf("Source: %s\n", metadata.Repository)
-	fmt.Printf("To use this module, configure its endpoints in .shiro/modules/registry.yaml\n")
+	// Check if it's a builtin type module
+	if moduleYAML != nil && moduleYAML.Type == "builtin" {
+		// Builtin (compiled) module
+		config = modules.ModuleConfig{
+			Name:        metadata.Name,
+			Type:        "builtin",
+			Description: metadata.Description,
+			Version:     moduleYAML.Version,
+			Source:      metadata.Repository,
+			Docs:        fmt.Sprintf("%s/blob/main/README.md", metadata.Repository),
+			Package:     moduleYAML.Package,
+			Factory:     moduleYAML.Factory,
+		}
+
+		// Validate required fields
+		if config.Package == "" {
+			log.Fatalf("Builtin module requires 'package' field in module.yaml")
+		}
+
+		// Add to registry
+		if err := discoverer.AddModule(moduleName, config); err != nil {
+			log.Fatalf("Failed to add module: %v", err)
+		}
+
+		// Run go get to add the package
+		fmt.Printf("Adding Go package %s...\n", config.Package)
+		if err := goGetPackage(config.Package); err != nil {
+			log.Fatalf("Failed to get package: %v\nRun 'go get %s' manually if needed.", err, config.Package)
+		}
+
+		fmt.Printf("✓ Module '%s' added successfully!\n", moduleName)
+		fmt.Printf("Package: %s\n", config.Package)
+		fmt.Println("\nRun 'shiro build' to compile with the new module.")
+
+		// Show credentials if defined
+		if len(moduleYAML.Credentials) > 0 {
+			fmt.Println("\nRequired credentials:")
+			for _, cred := range moduleYAML.Credentials {
+				if cred.Required {
+					fmt.Printf("  - %s: %s\n", cred.Name, cred.Description)
+				}
+			}
+		}
+	} else {
+		// HTTP-based module (original behavior)
+		config = modules.ModuleConfig{
+			Name:        metadata.Name,
+			Type:        "http",
+			Description: metadata.Description,
+			Version:     "1.0.0",
+			Source:      metadata.Repository,
+			Docs:        fmt.Sprintf("%s/blob/main/README.md", metadata.Repository),
+		}
+
+		// Add to registry
+		if err := discoverer.AddModule(moduleName, config); err != nil {
+			log.Fatalf("Failed to add module: %v", err)
+		}
+
+		fmt.Printf("Module '%s' added successfully!\n", moduleName)
+		fmt.Printf("Source: %s\n", metadata.Repository)
+		fmt.Printf("To use this module, configure its endpoints in .shiro/modules/registry.yaml\n")
+	}
 }
 
 // removeModule removes a module from the registry
@@ -336,4 +395,64 @@ func printModuleHelp() {
 	fmt.Println("  shiro module add github.com/user/custom-module")
 	fmt.Println("  shiro module search slack")
 	fmt.Println("  shiro module info jira")
+}
+
+// ModuleYAML represents the module.yaml file structure
+type ModuleYAML struct {
+	Name        string             `yaml:"name"`
+	Type        string             `yaml:"type"`
+	Package     string             `yaml:"package"`
+	Factory     string             `yaml:"factory"`
+	Description string             `yaml:"description"`
+	Version     string             `yaml:"version"`
+	Credentials []ModuleCredential `yaml:"credentials"`
+}
+
+// ModuleCredential represents a required credential
+type ModuleCredential struct {
+	Name        string `yaml:"name"`
+	Required    bool   `yaml:"required"`
+	Description string `yaml:"description"`
+	Secret      bool   `yaml:"secret"`
+}
+
+// fetchModuleYAML fetches and parses module.yaml from a GitHub repository
+func fetchModuleYAML(client *modules.GitHubClient, repo string) (*ModuleYAML, error) {
+	// Fetch module.yaml from GitHub
+	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/main/module.yaml", repo)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch module.yaml: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Try 'master' branch if 'main' fails
+		url = fmt.Sprintf("https://raw.githubusercontent.com/%s/master/module.yaml", repo)
+		resp, err = http.Get(url)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch module.yaml from master: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("module.yaml not found in repository")
+		}
+	}
+
+	var moduleYAML ModuleYAML
+	if err := yaml.NewDecoder(resp.Body).Decode(&moduleYAML); err != nil {
+		return nil, fmt.Errorf("failed to parse module.yaml: %w", err)
+	}
+
+	return &moduleYAML, nil
+}
+
+// goGetPackage runs 'go get' to add a package to go.mod
+func goGetPackage(pkg string) error {
+	cmd := exec.Command("go", "get", pkg)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
