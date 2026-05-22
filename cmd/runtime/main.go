@@ -29,9 +29,9 @@ func main() {
 	case "delete":
 		cli.DeleteCommand(args)
 	case "add":
-		cli.ModuleCommand(args)
+		cli.ModuleCommand(append([]string{"add"}, args...))
 	case "search":
-		cli.ModuleCommand(args)
+		cli.ModuleCommand(append([]string{"search"}, args...))
 	case "list":
 		if len(args) > 0 && args[0] == "modules" {
 			cli.ModuleCommand(append([]string{"list"}, args...))
@@ -39,13 +39,13 @@ func main() {
 			cli.ListCommand(args)
 		}
 	case "remove":
-		cli.ModuleCommand(args)
+		cli.ModuleCommand(append([]string{"remove"}, args...))
 	case "install":
-		cli.ModuleCommand(args)
+		cli.ModuleCommand(append([]string{"install"}, args...))
 	case "info":
-		cli.ModuleCommand(args)
+		cli.ModuleCommand(append([]string{"info"}, args...))
 	case "docs":
-		cli.ModuleCommand(args)
+		cli.ModuleCommand(append([]string{"docs"}, args...))
 	case "module":
 		cli.ModuleCommand(args)
 	case "build":
