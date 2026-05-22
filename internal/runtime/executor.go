@@ -172,7 +172,7 @@ func (e *Executor) executeStep(
 	}
 
 	// Respect save_output setting (default: true - save unless explicitly set to false)
-	if step.SaveOutput != nil && *step.SaveOutput == false {
+	if step.SaveOutput != nil && !*step.SaveOutput {
 		// Don't save output to state, only keep success/error status
 		result.Output = map[string]interface{}{
 			"_saved": false,
