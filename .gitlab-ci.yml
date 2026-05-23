@@ -8,12 +8,14 @@ stages:
 # AI-powered MR review
 ai-mr-review:
   stage: review
-  image: golang:1.21
+  image: ubuntu:latest
   before_script:
-    - apt-get update && apt-get install -y git
-    - go build -o shiro ./cmd/runtime
+    - apt-get update && apt-get install -y curl
+    - curl -LO https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-amd64
+    - chmod +x shiro-linux-amd64
+    - mv shiro-linux-amd64 /usr/local/bin/shiro
   script:
-    - ./shiro run examples/mr-review.json -config configs/models.yaml -state-store gitlab
+    - shiro run examples/mr-review.json -config configs/models.yaml -state-store gitlab
   artifacts:
     paths:
       - .shiro/
@@ -24,11 +26,14 @@ ai-mr-review:
 # Push notification
 push-notification:
   stage: review
-  image: golang:1.21
+  image: ubuntu:latest
   before_script:
-    - go build -o shiro ./cmd/runtime
+    - apt-get update && apt-get install -y curl
+    - curl -LO https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-amd64
+    - chmod +x shiro-linux-amd64
+    - mv shiro-linux-amd64 /usr/local/bin/shiro
   script:
-    - ./shiro run examples/push-notification.json -config configs/models.yaml
+    - shiro run examples/push-notification.json -config configs/models.yaml
   only:
     - main
     - master
@@ -36,13 +41,15 @@ push-notification:
 # Manual approval workflow - initial stage
 approval-initial:
   stage: approval
-  image: golang:1.21
+  image: ubuntu:latest
   before_script:
-    - apt-get update && apt-get install -y git
-    - go build -o shiro ./cmd/runtime
+    - apt-get update && apt-get install -y curl
+    - curl -LO https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-amd64
+    - chmod +x shiro-linux-amd64
+    - mv shiro-linux-amd64 /usr/local/bin/shiro
   script:
-    - ./shiro validate -workflow examples/conditional-approval-workflow.json -config configs/models.yaml
-    - ./shiro run -workflow examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab -fresh
+    - shiro validate -workflow examples/conditional-approval-workflow.json -config configs/models.yaml
+    - shiro run -workflow examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab -fresh
   artifacts:
     paths:
       - .shiro/
@@ -54,13 +61,15 @@ approval-initial:
 # Manual approval workflow - resume (manual trigger, blocks pipeline)
 approval-resume:
   stage: approval
-  image: golang:1.21
+  image: ubuntu:latest
   before_script:
-    - apt-get update && apt-get install -y git
-    - go build -o shiro ./cmd/runtime
+    - apt-get update && apt-get install -y curl
+    - curl -LO https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-amd64
+    - chmod +x shiro-linux-amd64
+    - mv shiro-linux-amd64 /usr/local/bin/shiro
   script:
-    - ./shiro validate -workflow examples/conditional-approval-workflow.json -config configs/models.yaml
-    - ./shiro run -workflow examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab
+    - shiro validate -workflow examples/conditional-approval-workflow.json -config configs/models.yaml
+    - shiro run -workflow examples/conditional-approval-workflow.json -config configs/models.yaml -state-store gitlab
   artifacts:
     paths:
       - .shiro/
