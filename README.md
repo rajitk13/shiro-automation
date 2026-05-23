@@ -207,7 +207,7 @@ shiro-windows-amd64.exe help
 
 **Option 1: Auto-detect and install (Recommended)**
 ```bash
-curl -sSL https://gitlab.com/rajitk13/shiro-automation/-/raw/main/scripts/install-auto.sh | bash
+curl -sSL https://raw.githubusercontent.com/rajitk13/shiro-automation/master/scripts/install-auto.sh | bash
 ```
 
 This script automatically detects your platform and installs the correct binary.
@@ -293,6 +293,27 @@ Workflows are defined in JSON:
 
 ## Available Modules
 
+### Subprocess Modules
+
+Subprocess modules are external programs that communicate with Shiro via JSON over stdin/stdout. They can be:
+- **Binary mode**: Pre-compiled binary downloaded from GitHub releases
+- **Go-run mode**: Executed via `go run` directly from a GitHub repo (fallback if no binary available)
+
+Install any subprocess module:
+```bash
+shiro add module github.com/your-org/your-module
+```
+
+Shiro auto-detects the best execution mode based on the module's `module.yaml`.
+
+#### Official Subprocess Modules
+
+| Module | Repo | Operations |
+|--------|------|------------|
+| `jira` | [shiro-automation-jira-datacenter](https://github.com/rajitk13/shiro-automation-jira-datacenter) | `create_issue`, `get_issue`, `update_issue`, `add_comment`, `transition_issue`, `search_issues` |
+
+---
+
 ### `print`
 Prints output to console with optional log levels and colors.
 
@@ -350,6 +371,26 @@ Generates content using AI models.
 - `system`: System prompt
 - `temperature`: Generation temperature
 - `max_tokens`: Maximum tokens
+
+### `jira` (subprocess module)
+Jira Data Center integration.
+
+**Install:**
+```bash
+shiro add module github.com/rajitk13/shiro-automation-jira-datacenter
+```
+
+**Required env vars:** `JIRA_BASE_URL`, `JIRA_API_TOKEN`
+
+**Config:**
+- `operation` (required): `create_issue`, `get_issue`, `update_issue`, `add_comment`, `transition_issue`, `search_issues`
+- `project`: Jira project key (required for `create_issue`)
+- `summary`: Issue summary (required for `create_issue`)
+- `issue_key`: Existing issue key (required for get/update/comment/transition)
+- `description`, `issue_type`, `priority`, `labels`, `assignee`: Optional fields
+- `jql`: JQL query (required for `search_issues`)
+- `transition_id`: Transition ID (required for `transition_issue`)
+- `comment`: Comment body (required for `add_comment`)
 
 ## Variable Resolution
 
@@ -438,17 +479,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-
-      - run: go build -o shiro ./cmd/runtime
+      - name: Install Shiro
+        run: |
+          curl -LOk https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-amd64
+          chmod +x shiro-linux-amd64
+          sudo mv shiro-linux-amd64 /usr/local/bin/shiro
 
       - name: Run AI Review
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: ./shiro -workflow examples/github-mr-review.json -config configs/models.yaml
+        run: shiro run
 ```
 
 ## GitLab CI Integration
@@ -461,14 +502,61 @@ stages:
 
 ai-review:
   stage: review
-  image: golang:1.21
+  image: golang:1.23
   before_script:
-    - apt-get update && apt-get install -y git
-    - go build -o shiro ./cmd/runtime
+    - curl -LOk https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-arm64
+    - chmod +x shiro-linux-arm64
+    - mv shiro-linux-arm64 /usr/local/bin/shiro
   script:
-    - ./shiro -workflow examples/mr-review.json -config configs/models.yaml -state-store gitlab
-  only:
-    - merge_requests
+    - shiro run
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+```
+
+### Using Subprocess Modules (e.g. Jira)
+
+Subprocess modules run as external processes. They can be installed from GitHub repos and executed via pre-built binary or `go run` mode (no binary required).
+
+```yaml
+stages:
+  - test
+
+test-jira:
+  stage: test
+  image: golang:1.23
+  before_script:
+    - curl -LOk https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-linux-arm64
+    - chmod +x shiro-linux-arm64
+    - mv shiro-linux-arm64 /usr/local/bin/shiro
+  script:
+    - SHIRO_INSECURE_TLS=1 shiro add module github.com/your-org/your-module
+    - export GOSUMDB=off
+    - export GOPROXY=direct
+    - export GIT_SSL_NO_VERIFY=1
+    - shiro run
+  variables:
+    MY_SERVICE_URL: "https://your-service.example.com"
+```
+
+Workflow JSON for subprocess module:
+
+```json
+{
+  "name": "test-jira",
+  "steps": [
+    {
+      "id": "create-jira-issue",
+      "type": "jira",
+      "config": {
+        "operation": "create_issue",
+        "project": "DEV",
+        "summary": "Automated issue from CI",
+        "description": "Created by Shiro workflow",
+        "issue_type": "Task"
+      }
+    }
+  ]
+}
 ```
 
 ## State Storage
@@ -566,12 +654,6 @@ chmod +x .githooks/pre-commit
 The setup script configures:
 - Git hooks path to use `.githooks/` directory
 - Pre-commit hook for automatic formatting, linting, and testing checks
-
-#### Manual Setup
-
-This installs:
-- pre-commit (for pre-commit hooks)
-- golangci-lint (for Go linting)
 
 #### Manual Setup
 
