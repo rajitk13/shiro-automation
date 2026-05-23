@@ -42,8 +42,33 @@ func NewSubprocessModule(name, binaryPath string) *SubprocessModule {
 	}
 }
 
+// GoRunModule implements Module by running via 'go run' on a GitHub repo
+type GoRunModule struct {
+	Name     string
+	Repo     string // e.g., github.com/user/module
+	metadata *ModuleMetadata
+}
+
+// NewGoRunModule creates a new go-run module
+func NewGoRunModule(name, repo string) *GoRunModule {
+	return &GoRunModule{
+		Name: name,
+		Repo: repo,
+	}
+}
+
 // Run executes the module by spawning the binary and communicating via stdin/stdout JSON
 func (m *SubprocessModule) Run(ctx context.Context, stepCtx interface{}, step interface{}) (map[string]interface{}, error) {
+	return runSubprocess(ctx, stepCtx, step, []string{m.BinaryPath})
+}
+
+// Run executes the module by running 'go run' on the GitHub repo
+func (m *GoRunModule) Run(ctx context.Context, stepCtx interface{}, step interface{}) (map[string]interface{}, error) {
+	return runSubprocess(ctx, stepCtx, step, []string{"go", "run", m.Repo + "/cmd/main.go"})
+}
+
+// runSubprocess is the shared implementation for both binary and go-run modules
+func runSubprocess(ctx context.Context, stepCtx interface{}, step interface{}, cmdArgs []string) (map[string]interface{}, error) {
 	// Extract action and config from step
 	type stepLike interface {
 		GetType() string
@@ -102,7 +127,7 @@ func (m *SubprocessModule) Run(ctx context.Context, stepCtx interface{}, step in
 	}
 
 	// Spawn subprocess
-	cmd := exec.CommandContext(ctx, m.BinaryPath)
+	cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 	cmd.Stdin = bytes.NewReader(reqBytes)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -134,12 +159,27 @@ func (m *SubprocessModule) Metadata() ModuleMetadata {
 	if m.metadata != nil {
 		return *m.metadata
 	}
+	meta := fetchMetadata(m.BinaryPath)
+	m.metadata = &meta
+	return meta
+}
 
-	// Try to get metadata from subprocess
+// Metadata returns module metadata, fetching from subprocess if needed
+func (m *GoRunModule) Metadata() ModuleMetadata {
+	if m.metadata != nil {
+		return *m.metadata
+	}
+	meta := fetchMetadata("go", "run", m.Repo+"/cmd/main.go")
+	m.metadata = &meta
+	return meta
+}
+
+// fetchMetadata runs the subprocess to get metadata
+func fetchMetadata(cmdArgs ...string) ModuleMetadata {
 	req := SubprocessRequest{Action: "__metadata__"}
 	reqBytes, _ := json.Marshal(req)
 
-	cmd := exec.Command(m.BinaryPath)
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	cmd.Stdin = bytes.NewReader(reqBytes)
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
@@ -147,14 +187,13 @@ func (m *SubprocessModule) Metadata() ModuleMetadata {
 	if err := cmd.Run(); err == nil {
 		var meta ModuleMetadata
 		if err := json.Unmarshal(stdout.Bytes(), &meta); err == nil {
-			m.metadata = &meta
 			return meta
 		}
 	}
 
 	return ModuleMetadata{
-		Name:        m.Name,
-		Description: fmt.Sprintf("Subprocess module: %s", m.Name),
+		Name:        "subprocess",
+		Description: "Subprocess module",
 	}
 }
 

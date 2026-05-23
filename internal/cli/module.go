@@ -153,23 +153,29 @@ func addModule(args []string) {
 	var config modules.ModuleConfig
 
 	if moduleYAML != nil && moduleYAML.Type == "subprocess" {
-		// Subprocess plugin module - download pre-built binary
-		artifactURL := moduleYAML.ArtifactURL
-		if artifactURL == "" {
-			// Build default artifact URL from repo releases
-			binaryName := moduleYAML.Binary
-			if binaryName == "" {
-				binaryName = fmt.Sprintf("shiro-%s", moduleName)
-			}
-			artifactURL = fmt.Sprintf("https://github.com/%s/releases/latest/download/%s-%s",
-				repoPath, binaryName, modules.PlatformSuffix())
-		}
-
+		// Subprocess plugin module - try binary download, fall back to go run
 		insecureTLS := os.Getenv("SHIRO_INSECURE_TLS") == "1" || os.Getenv("SHIRO_INSECURE_TLS") == "true"
 		pluginsDir := ".shiro/plugins"
-		_, err := modules.DownloadSubprocessModule(moduleName, artifactURL, pluginsDir, insecureTLS)
-		if err != nil {
-			log.Fatalf("Failed to download module binary: %v", err)
+
+		// Try to download binary if artifact_url is specified
+		artifactURL := moduleYAML.ArtifactURL
+		if artifactURL == "" && moduleYAML.Binary != "" {
+			// Build default artifact URL from repo releases
+			artifactURL = fmt.Sprintf("https://github.com/%s/releases/latest/download/%s-%s",
+				repoPath, moduleYAML.Binary, modules.PlatformSuffix())
+		}
+
+		var useGoRun bool
+		if artifactURL != "" {
+			_, err := modules.DownloadSubprocessModule(moduleName, artifactURL, pluginsDir, insecureTLS)
+			if err != nil {
+				fmt.Printf("Warning: Failed to download binary: %v\n", err)
+				fmt.Println("Falling back to 'go run' mode (requires Go toolchain)")
+				useGoRun = true
+			}
+		} else {
+			fmt.Println("No artifact_url specified, using 'go run' mode (requires Go toolchain)")
+			useGoRun = true
 		}
 
 		config = modules.ModuleConfig{
@@ -179,12 +185,21 @@ func addModule(args []string) {
 			Version:     moduleYAML.Version,
 			Source:      metadata.Repository,
 		}
+		if useGoRun {
+			config.GoRunRepo = repoPath
+		}
 		if err := discoverer.AddModule(moduleName, config); err != nil {
 			log.Fatalf("Failed to add module to registry: %v", err)
 		}
 
-		fmt.Printf("✓ Module '%s' added successfully!\n", moduleName)
-		fmt.Println("Run 'shiro run' to use the new module — no rebuild needed.")
+		if useGoRun {
+			fmt.Printf("✓ Module '%s' added successfully (go run mode)!\n", moduleName)
+			fmt.Printf("Repo: %s\n", repoPath)
+			fmt.Println("Run 'shiro run' to use the new module — requires Go toolchain.")
+		} else {
+			fmt.Printf("✓ Module '%s' added successfully!\n", moduleName)
+			fmt.Println("Run 'shiro run' to use the new module — no rebuild needed.")
+		}
 
 		if len(moduleYAML.Credentials) > 0 {
 			fmt.Println("\nRequired credentials:")
