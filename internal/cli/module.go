@@ -129,12 +129,6 @@ func addModule(args []string) {
 		log.Fatalf("Failed to get module metadata: %v", err)
 	}
 
-	// Determine module name
-	if moduleName == "" {
-		parts := strings.Split(repoPath, "/")
-		moduleName = parts[len(parts)-1]
-	}
-
 	// Create module config
 	registryPath := ".shiro/modules/registry.yaml"
 	discoverer := modules.NewDiscoverer(registryPath, nil)
@@ -148,6 +142,14 @@ func addModule(args []string) {
 		fmt.Printf("Warning: Could not fetch module.yaml: %v\n", err)
 		fmt.Println("Falling back to HTTP module type.")
 		moduleYAML = nil
+	}
+
+	// Determine module name - use name from module.yaml if available
+	if moduleYAML != nil && moduleYAML.Name != "" {
+		moduleName = moduleYAML.Name
+	} else if moduleName == "" {
+		parts := strings.Split(repoPath, "/")
+		moduleName = parts[len(parts)-1]
 	}
 
 	var config modules.ModuleConfig

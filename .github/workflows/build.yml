@@ -149,3 +149,63 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  auto-release:
+    runs-on: ubuntu-latest
+    needs: [ build, lint, test ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commit info
+        id: commit
+        run: |
+          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          TAG="v${{ steps.commit.outputs.timestamp }}-${{ steps.commit.outputs.sha }}"
+          git tag -f "$TAG"
+          git push origin "$TAG" --force
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: shiro-*
+          merge-multiple: true
+
+      - name: Flatten artifacts
+        run: |
+          for dir in dist/*/; do
+            for file in "$dir"*; do
+              if [ -f "$file" ]; then
+                mv "$file" dist/
+              fi
+            done
+            rmdir "$dir" 2>/dev/null || true
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ steps.commit.outputs.timestamp }}-${{ steps.commit.outputs.sha }}"
+          name: "Release ${{ steps.commit.outputs.timestamp }}"
+          body: "Automated release from commit ${{ steps.commit.outputs.sha }}"
+          files: dist/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete old tags and releases (keep latest 3)
+        run: |
+          gh release list --limit 100 | tail -n +4 | awk '{print $3}' | xargs -I {} gh release delete {} --yes || true
+          gh tag list | tail -n +4 | xargs -I {} gh tag delete {} --force || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
