@@ -70,11 +70,6 @@ func (m *GoRunModule) Run(ctx context.Context, stepCtx interface{}, step interfa
 // runSubprocess is the shared implementation for both binary and go-run modules
 func runSubprocess(ctx context.Context, stepCtx interface{}, step interface{}, cmdArgs []string) (map[string]interface{}, error) {
 	// Extract action and config from step
-	type stepLike interface {
-		GetType() string
-		GetConfig() map[string]interface{}
-	}
-
 	var action string
 	var config map[string]interface{}
 
