@@ -34,12 +34,6 @@ type ModuleConfig struct {
 	Extra     map[string]interface{} `yaml:",inline"`
 }
 
-// ModuleReviews represents review information for a module
-type ModuleReviews struct {
-	Count         int     `yaml:"count"`
-	AverageRating float64 `yaml:"average_rating"`
-}
-
 // RegistryConfig represents the module registry configuration
 type RegistryConfig struct {
 	Modules map[string]ModuleConfig `yaml:"modules"`
