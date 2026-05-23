@@ -64,7 +64,15 @@ func (m *SubprocessModule) Run(ctx context.Context, stepCtx interface{}, step in
 
 // Run executes the module by running 'go run' on the GitHub repo
 func (m *GoRunModule) Run(ctx context.Context, stepCtx interface{}, step interface{}) (map[string]interface{}, error) {
-	return runSubprocess(ctx, stepCtx, step, []string{"go", "run", m.Repo + "/cmd/main.go"})
+	return runSubprocess(ctx, stepCtx, step, []string{"go", "run", goRunTarget(m.Repo)})
+}
+
+// goRunTarget builds the go run target path from a repo (e.g., "user/repo" -> "github.com/user/repo/cmd@latest")
+func goRunTarget(repo string) string {
+	if !strings.HasPrefix(repo, "github.com/") && !strings.HasPrefix(repo, "gitlab.com/") {
+		repo = "github.com/" + repo
+	}
+	return repo + "/cmd@latest"
 }
 
 // runSubprocess is the shared implementation for both binary and go-run modules
@@ -164,7 +172,7 @@ func (m *GoRunModule) Metadata() ModuleMetadata {
 	if m.metadata != nil {
 		return *m.metadata
 	}
-	meta := fetchMetadata("go", "run", m.Repo+"/cmd/main.go")
+	meta := fetchMetadata("go", "run", goRunTarget(m.Repo))
 	m.metadata = &meta
 	return meta
 }
