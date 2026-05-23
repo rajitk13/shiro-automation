@@ -34,11 +34,11 @@ fi
 
 echo "Downloading $BINARY_NAME..."
 
-# Download from GitLab CI artifacts
-DOWNLOAD_URL="https://gitlab.com/rajitk13/shiro-automation/-/jobs/artifacts/main/raw/dist/${BINARY_NAME}?job=build"
+# Download from GitHub releases
+DOWNLOAD_URL="https://github.com/rajitk13/shiro-automation/releases/latest/download/${BINARY_NAME}"
 
 # Download
-curl -LO "$DOWNLOAD_URL"
+curl -LOk "$DOWNLOAD_URL"
 
 # Verify download
 if [ ! -f "$BINARY_NAME" ]; then
@@ -54,6 +54,9 @@ fi
 # Install to PATH
 INSTALL_DIR="/usr/local/bin"
 if [ -d "$INSTALL_DIR" ] && [ -w "$INSTALL_DIR" ]; then
+  mv "$BINARY_NAME" "$INSTALL_DIR/shiro"
+  echo "Installed to $INSTALL_DIR/shiro"
+elif command -v sudo &> /dev/null; then
   sudo mv "$BINARY_NAME" "$INSTALL_DIR/shiro"
   echo "Installed to $INSTALL_DIR/shiro"
 else
