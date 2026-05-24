@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/rkuthiala/shiro-automation/internal/cicheck"
 	"github.com/rkuthiala/shiro-automation/internal/config"
 	"github.com/rkuthiala/shiro-automation/internal/errors"
 	"github.com/rkuthiala/shiro-automation/internal/workflow"
@@ -16,6 +17,7 @@ func ValidateCommand(args []string) {
 	workflowFile := flagSet.String("workflow", "", "Path to workflow JSON file")
 	configFile := flagSet.String("config", "", "Path to model configuration file")
 	shiroDir := flagSet.String("shiro-dir", ".shiro", "Path to .shiro directory")
+	ciFile := flagSet.String("ci", "", "Path to CI file (.gitlab-ci.yml or GitHub Actions workflow) for cross-validation")
 	showHelp := flagSet.Bool("help", false, "Show help information")
 	flagSet.Parse(args)
 
@@ -54,7 +56,15 @@ func ValidateCommand(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Workflow validation passed: %s\n", cfg.WorkflowFile)
+	fmt.Printf("[VALIDATE] Workflow: %s — OK\n", cfg.WorkflowFile)
+
+	// CI cross-validation
+	if *ciFile != "" {
+		exitCode := runCICheck(cfg.WorkflowFile, *ciFile)
+		if exitCode != 0 {
+			os.Exit(exitCode)
+		}
+	}
 }
 
 func validateWorkflowFile(path string, modelConfig map[string]map[string]interface{}) error {
@@ -140,6 +150,39 @@ func printValidationError(err error) {
 	log.Printf("Workflow validation failed: %v", err)
 }
 
+func runCICheck(workflowFile, ciFile string) int {
+	findings, platform, err := cicheck.RunCheck(workflowFile, ciFile)
+	if err != nil {
+		fmt.Printf("[CI-CHECK] Failed to run CI check: %v\n", err)
+		return 1
+	}
+
+	fmt.Printf("[CI-CHECK] CI: %s (%s)\n", ciFile, platform)
+
+	if len(findings) == 0 {
+		fmt.Println("[CI-CHECK] All checks passed. No issues found.")
+		return 0
+	}
+
+	errorCount := 0
+	warnCount := 0
+	for _, f := range findings {
+		fmt.Println(f.String())
+		if f.Severity == cicheck.SeverityError {
+			errorCount++
+		} else if f.Severity == cicheck.SeverityWarning {
+			warnCount++
+		}
+	}
+
+	fmt.Printf("\n[CI-CHECK] %d error(s), %d warning(s) found.\n", errorCount, warnCount)
+	if errorCount > 0 {
+		fmt.Println("[CI-CHECK] Fix errors before running the workflow in CI.")
+		return 1
+	}
+	return 0
+}
+
 func printValidateHelp() {
 	fmt.Println("Usage:")
 	fmt.Println("  shiro validate [options]")
@@ -148,5 +191,11 @@ func printValidateHelp() {
 	fmt.Println("  -workflow <file>  Path to workflow JSON file (auto-detected if not specified)")
 	fmt.Println("  -config <file>    Path to model configuration file (auto-detected if not specified)")
 	fmt.Println("  -shiro-dir <path> Path to .shiro directory (default \".shiro\")")
+	fmt.Println("  -ci <file>        Path to CI file for cross-validation (.gitlab-ci.yml or GitHub Actions)")
 	fmt.Println("  -help             Show this help message")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  shiro validate -workflow .shiro/workflow.json")
+	fmt.Println("  shiro validate -workflow .shiro/workflow.json -ci .gitlab-ci.yml")
+	fmt.Println("  shiro validate -workflow .shiro/workflow.json -ci .github/workflows/deploy.yml")
 }
