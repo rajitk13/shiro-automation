@@ -169,6 +169,30 @@ shiro run examples/github-mr-review.json -state-store filesystem
 shiro examples/simple-test.json
 ```
 
+### Validation
+
+```bash
+# Validate workflow JSON only
+shiro validate -workflow .shiro/workflow.json
+
+# Validate workflow + cross-check against CI configuration
+shiro validate -workflow .shiro/workflow.json -ci .gitlab-ci.yml
+
+# Validate with GitHub Actions workflow
+shiro validate -workflow .shiro/workflow.json -ci .github/workflows/deploy.yml
+```
+
+The `--ci` flag cross-checks your workflow against the CI pipeline configuration to catch common misconfigurations:
+
+**GitLab CI checks:**
+- Pause steps require a `when: manual` resume job with `needs:` dependency
+- Jobs using `-state-store gitlab` must expose `.shiro/` as an artifact
+- Initial jobs should use `-fresh` flag, resume jobs should not
+
+**GitHub Actions checks:**
+- Pause steps should use environment protection rules (no native manual gate)
+- `-state-store gitlab` is GitLab-specific — use filesystem with artifacts instead
+
 ### View Help
 
 ```bash
