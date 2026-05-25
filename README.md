@@ -263,6 +263,41 @@ make install
 
 This installs `shiro` to `/usr/local/bin`, allowing you to run it from anywhere.
 
+### Docker Image
+
+For CI/CD environments, use the pre-built Docker image to avoid downloading the binary in each job:
+
+```bash
+# Pull the image
+docker pull ghcr.io/rajitk13/shiro-automation:latest
+
+# Run shiro
+docker run --rm ghcr.io/rajitk13/shiro-automation:latest --help
+```
+
+**GitLab CI usage:**
+
+```yaml
+test-jira:
+  stage: test
+  image: ghcr.io/rajitk13/shiro-automation:latest
+  script:
+    - shiro run
+```
+
+The image includes:
+- Shiro binary (latest release)
+- Go 1.23 (for go-run subprocess mode)
+- Git and curl (for module operations)
+- Alpine 3.20 base (minimal size)
+
+**Available tags:**
+- `latest` — latest release
+- `vX.Y.Z` — semantic version tags
+- `<sha>` — commit-based tags
+
+Multi-arch support: `linux/amd64`, `linux/arm64`
+
 ## Simplified User Experience
 
 Shiro provides a streamlined developer experience with sensible defaults:
