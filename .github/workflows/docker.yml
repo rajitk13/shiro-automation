@@ -38,16 +38,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
+      - name: Get CalVer tag
+        id: calver
+        run: |
+          DATE=$(date +%Y.%m.%d)
+          # Fetch remote tags to check for existing today's tags
+          git fetch --tags
+          if git tag -l "v${DATE}.*" | tail -n 1; then
+            LAST_TAG=$(git tag -l "v${DATE}.*" | sort -V | tail -n 1)
+            BUILD_NUM=$(echo $LAST_TAG | cut -d. -f4)
+            BUILD_NUM=$((BUILD_NUM + 1))
+          else
+            BUILD_NUM=0
+          fi
+          TAG="v${DATE}.${BUILD_NUM}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "CalVer tag: ${TAG}"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -55,7 +61,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.calver.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

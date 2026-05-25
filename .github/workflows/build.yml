@@ -171,15 +171,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get commit info
-        id: commit
+      - name: Get CalVer tag
+        id: calver
         run: |
-          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "timestamp=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+          DATE=$(date +%Y.%m.%d)
+          # Fetch remote tags to check for existing today's tags
+          git fetch --tags
+          if git tag -l "v${DATE}.*" | tail -n 1; then
+            LAST_TAG=$(git tag -l "v${DATE}.*" | sort -V | tail -n 1)
+            BUILD_NUM=$(echo $LAST_TAG | cut -d. -f4)
+            BUILD_NUM=$((BUILD_NUM + 1))
+          else
+            BUILD_NUM=0
+          fi
+          TAG="v${DATE}.${BUILD_NUM}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "CalVer tag: ${TAG}"
 
       - name: Create and push tag
         run: |
-          TAG="v${{ steps.commit.outputs.timestamp }}-${{ steps.commit.outputs.sha }}"
+          TAG="${{ steps.calver.outputs.tag }}"
           git tag -f "$TAG"
           git push origin "$TAG" --force
 
@@ -204,9 +215,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "v${{ steps.commit.outputs.timestamp }}-${{ steps.commit.outputs.sha }}"
-          name: "Release ${{ steps.commit.outputs.timestamp }}"
-          body: "Automated release from commit ${{ steps.commit.outputs.sha }}"
+          tag_name: "${{ steps.calver.outputs.tag }}"
+          name: "Release ${{ steps.calver.outputs.tag }}"
+          body: "Automated CalVer release"
           files: dist/*
           draft: false
           prerelease: false
