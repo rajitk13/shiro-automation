@@ -85,12 +85,23 @@ jobs:
         with:
           go-version: '1.21'
 
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="dev-${{ github.sha }}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Building version: ${VERSION}"
+
       - name: Build shiro
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -o shiro-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/runtime
+          go build -ldflags="-X main.version=${{ steps.version.outputs.version }}" -o shiro-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/runtime
 
       - name: Generate checksum
         run: |

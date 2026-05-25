@@ -1,10 +1,14 @@
 .PHONY: build build-runtime test clean lint help install-deps install
 
+# Version information
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+LDFLAGS := -ldflags="-X main.version=$(VERSION)"
+
 # Build targets
 build: build-runtime
 
 build-runtime:
-	go build -o shiro ./cmd/runtime
+	go build $(LDFLAGS) -o shiro ./cmd/runtime
 
 # Install shiro to PATH
 install:

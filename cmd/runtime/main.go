@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/rkuthiala/shiro-automation/internal/cli"
 )
+
+var version = "dev" // injected via ldflags at build time
 
 func main() {
 	if len(os.Args) < 2 {
@@ -14,6 +17,12 @@ func main() {
 
 	command := os.Args[1]
 	args := os.Args[2:]
+
+	// Handle version flag
+	if command == "-v" || command == "--version" {
+		printVersion()
+		os.Exit(0)
+	}
 
 	switch command {
 	case "init":
@@ -50,6 +59,8 @@ func main() {
 		cli.ModuleCommand(args)
 	case "help", "-help", "--help":
 		printHelp()
+	case "-v", "--version":
+		printVersion()
 	default:
 		// Try to run as workflow if no recognized command
 		cli.RunCommand(os.Args[1:])
@@ -86,6 +97,7 @@ func printHelp() {
 	println("  info module       Display module information")
 	println("  docs module       Open module documentation")
 	println("  help              Show this help message")
+	println("  -v, --version     Show version information")
 	println()
 	println("Examples:")
 	println("  shiro init")
@@ -97,4 +109,8 @@ func printHelp() {
 	println("  shiro list modules")
 	println()
 	println("For more information: https://github.com/rajitk13/shiro-automation")
+}
+
+func printVersion() {
+	fmt.Printf("Shiro version: %s\n", version)
 }
