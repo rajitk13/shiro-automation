@@ -54,7 +54,7 @@ func (t *CodeReviewTemplate) Initialize(interactive, directConfig bool, configAr
     },
     {
       "id": "ai-review",
-      "type": "ai.generate",
+      "type": "ai",
       "depends_on": ["get-diff"],
       "config": {
         "prompt": "Review this code diff. Provide free text comments with file path and line number for each issue found.",
@@ -62,16 +62,12 @@ func (t *CodeReviewTemplate) Initialize(interactive, directConfig bool, configAr
       }
     },
     {
-      "id": "post-comment",
-      "type": "http.request",
+      "id": "print-review",
+      "type": "print",
       "depends_on": ["ai-review"],
       "config": {
-        "method": "POST",
-        "url": "{{env.CI_API_V4_URL}}/projects/{{env.CI_PROJECT_ID}}/merge_requests/{{env.CI_MERGE_REQUEST_IID}}/notes",
-        "headers": {
-          "JOB-TOKEN": "{{env.CI_JOB_TOKEN}}"
-        },
-        "body": "{{steps.ai-review.content}}"
+        "level": "info",
+        "message": "{{steps.ai-review.content}}"
       }
     }
   ]
@@ -119,7 +115,7 @@ models:
   stage: review
   image: ghcr.io/rajitk13/shiro-automation:latest
   script:
-    - shiro run -workflow .shiro/workflows/code-review.json -config .shiro/config.yaml
+    - shiro run -workflow .shiro/workflows/code-review.json -config .shiro/config.yaml -state-store gitlab
   only:
     - merge_requests`
 
