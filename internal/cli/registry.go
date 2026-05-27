@@ -1,9 +1,9 @@
 package cli
 
 import (
+	"github.com/rkuthiala/shiro-automation/internal/gitlab"
 	"github.com/rkuthiala/shiro-automation/internal/modules"
 	"github.com/rkuthiala/shiro-automation/pkg/git"
-	"github.com/rkuthiala/shiro-automation/pkg/gitlab"
 	"github.com/rkuthiala/shiro-automation/pkg/print"
 	"github.com/rkuthiala/shiro-automation/pkg/shell"
 	"github.com/rkuthiala/shiro-automation/pkg/slack"

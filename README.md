@@ -466,6 +466,34 @@ Performs git operations.
 - `base`: Base branch/commit
 - `target`: Target branch/commit (default: HEAD)
 
+### `gitlab`
+GitLab operations for merge requests, commits, and users.
+
+**Config:**
+- `operation` (required): Operation to perform: `post_comment`, `get_commit_info`, `get_user_info`, `get_mr_participants`, `get_files_changed`
+- `body`: Comment body to post (for `post_comment` operation)
+- `commit_sha`: Commit SHA to get info for (for `get_commit_info` operation, defaults to `CI_COMMIT_SHA`)
+- `user_id`: User ID to get info for (for `get_user_info` operation)
+
+**Environment Variables:**
+- `CI_PROJECT_ID`: GitLab project ID (required for most operations)
+- `CI_MERGE_REQUEST_IID`: Merge request IID (required for MR operations)
+- `CI_JOB_TOKEN`: GitLab CI job token (default authentication)
+- `GITLAB_TOKEN`: Personal access token (alternative to job token)
+
+**Example:**
+```json
+{
+  "id": "post-comment",
+  "type": "gitlab",
+  "depends_on": ["ai-review"],
+  "config": {
+    "operation": "post_comment",
+    "body": "{{steps.ai-review.content}}"
+  }
+}
+```
+
 ### `ai.generate`
 Generates content using AI models.
 

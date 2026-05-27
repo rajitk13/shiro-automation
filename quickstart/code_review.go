@@ -65,6 +65,7 @@ func (t *CodeReviewTemplate) Initialize(interactive, directConfig bool, configAr
       "type": "gitlab",
       "depends_on": ["ai-review"],
       "config": {
+        "operation": "post_comment",
         "body": "{{steps.ai-review.content}}"
       }
     }
