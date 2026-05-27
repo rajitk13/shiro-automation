@@ -178,6 +178,9 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 
 	if resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized && c.tokenType == "job" {
+			return fmt.Errorf("unexpected status code %d: %s; CI_JOB_TOKEN was rejected by GitLab for this API call, configure GITLAB_TOKEN with api scope to post merge request comments", resp.StatusCode, string(respBody))
+		}
 		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
 	}
 
