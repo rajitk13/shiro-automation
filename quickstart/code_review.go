@@ -49,7 +49,7 @@ func (t *CodeReviewTemplate) Initialize(interactive, directConfig bool, configAr
       "config": {
         "operation": "diff",
         "base": "{{env.CI_MERGE_REQUEST_DIFF_BASE_SHA}}",
-        "target": "{{env.CI_MERGE_REQUEST_SOURCE_SHA}}"
+        "target": "{{env.CI_COMMIT_SHA}}"
       }
     },
     {
