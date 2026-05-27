@@ -7,14 +7,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 )
 
 // Client is a GitLab API client
 type Client struct {
-	baseURL string
-	token   string
-	client  *http.Client
+	baseURL   string
+	token     string
+	tokenType string // "private" or "job"
+	client    *http.Client
 }
 
 // NewClient creates a new GitLab client
@@ -25,23 +27,27 @@ func NewClient() *Client {
 	}
 
 	token := os.Getenv("GITLAB_TOKEN")
+	tokenType := "private"
 	if token == "" {
 		token = os.Getenv("CI_JOB_TOKEN")
+		tokenType = "job"
 	}
 
 	return &Client{
-		baseURL: baseURL,
-		token:   token,
-		client:  &http.Client{},
+		baseURL:   baseURL,
+		token:     token,
+		tokenType: tokenType,
+		client:    &http.Client{},
 	}
 }
 
 // NewClientWithConfig creates a new GitLab client with custom config
 func NewClientWithConfig(baseURL, token string) *Client {
 	return &Client{
-		baseURL: baseURL,
-		token:   token,
-		client:  &http.Client{},
+		baseURL:   baseURL,
+		token:     token,
+		tokenType: "private",
+		client:    &http.Client{},
 	}
 }
 
@@ -65,16 +71,26 @@ func GetBranch() string {
 	return os.Getenv("CI_COMMIT_REF_NAME")
 }
 
+// setAuthToken sets the appropriate authentication header based on token type
+func (c *Client) setAuthToken(req *http.Request) {
+	if c.tokenType == "job" {
+		req.Header.Set("JOB-TOKEN", c.token)
+	} else {
+		req.Header.Set("PRIVATE-TOKEN", c.token)
+	}
+}
+
 // GetDiff gets the diff for a merge request
 func (c *Client) GetDiff(ctx context.Context, projectID, mrIID string) (string, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, projectID, mrIID)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, encodedProjectID, mrIID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -107,14 +123,15 @@ func (c *Client) GetDiff(ctx context.Context, projectID, mrIID string) (string, 
 
 // GetMRInfo gets information about a merge request
 func (c *Client) GetMRInfo(ctx context.Context, projectID, mrIID string) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s", c.baseURL, projectID, mrIID)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s", c.baseURL, encodedProjectID, mrIID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -137,7 +154,9 @@ func (c *Client) GetMRInfo(ctx context.Context, projectID, mrIID string) (map[st
 
 // PostMRComment posts a comment to a merge request
 func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body string) error {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/notes", c.baseURL, projectID, mrIID)
+	// URL encode the project ID to handle project paths with slashes
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/notes", c.baseURL, encodedProjectID, mrIID)
 
 	payload := map[string]string{
 		"body": body,
@@ -153,7 +172,7 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
@@ -164,6 +183,9 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 
 	if resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized && c.tokenType == "job" {
+			return fmt.Errorf("unexpected status code %d: %s; CI_JOB_TOKEN was rejected by GitLab for this API call, configure GITLAB_TOKEN with api scope to post merge request comments", resp.StatusCode, string(respBody))
+		}
 		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
 	}
 
@@ -172,14 +194,15 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 
 // UploadArtifact uploads a file as a GitLab job artifact
 func (c *Client) UploadArtifact(ctx context.Context, projectID, jobID, artifactPath string, content []byte) error {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, projectID, jobID, artifactPath)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, encodedProjectID, jobID, artifactPath)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(content))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := c.client.Do(req)
@@ -198,14 +221,15 @@ func (c *Client) UploadArtifact(ctx context.Context, projectID, jobID, artifactP
 
 // DownloadArtifact downloads a file from GitLab job artifacts
 func (c *Client) DownloadArtifact(ctx context.Context, projectID, jobID, artifactPath string) ([]byte, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, projectID, jobID, artifactPath)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, encodedProjectID, jobID, artifactPath)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -221,16 +245,143 @@ func (c *Client) DownloadArtifact(ctx context.Context, projectID, jobID, artifac
 	return io.ReadAll(resp.Body)
 }
 
-// ListJobArtifacts lists all artifacts for a job
-func (c *Client) ListJobArtifacts(ctx context.Context, projectID, jobID string) ([]string, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts", c.baseURL, projectID, jobID)
+// GetCommitInfo gets information about a specific commit
+func (c *Client) GetCommitInfo(ctx context.Context, projectID, commitSHA string) (map[string]interface{}, error) {
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", c.baseURL, encodedProjectID, commitSHA)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var info map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return info, nil
+}
+
+// GetUserInfo gets information about a user
+func (c *Client) GetUserInfo(ctx context.Context, userID string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/api/v4/users/%s", c.baseURL, userID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.setAuthToken(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var info map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return info, nil
+}
+
+// GetMRParticipants gets participants in a merge request
+func (c *Client) GetMRParticipants(ctx context.Context, projectID, mrIID string) ([]map[string]interface{}, error) {
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/participants", c.baseURL, encodedProjectID, mrIID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.setAuthToken(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var participants []map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&participants); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return participants, nil
+}
+
+// GetFilesChanged gets list of changed files in a merge request
+func (c *Client) GetFilesChanged(ctx context.Context, projectID, mrIID string) ([]map[string]interface{}, error) {
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, encodedProjectID, mrIID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.setAuthToken(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Changes []map[string]interface{} `json:"changes"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Changes, nil
+}
+
+// ListJobArtifacts lists all artifacts for a job
+func (c *Client) ListJobArtifacts(ctx context.Context, projectID, jobID string) ([]string, error) {
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts", c.baseURL, encodedProjectID, jobID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {

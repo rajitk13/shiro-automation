@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/rkuthiala/shiro-automation/internal/gitlab"
 	"github.com/rkuthiala/shiro-automation/internal/modules"
 	"github.com/rkuthiala/shiro-automation/pkg/git"
 	"github.com/rkuthiala/shiro-automation/pkg/print"
@@ -21,6 +22,9 @@ func registerAllModules(registry *modules.Registry) error {
 		return err
 	}
 	if err := registry.Register("shell.exec", shell.NewShellModule()); err != nil {
+		return err
+	}
+	if err := registry.Register("gitlab", gitlab.NewGitLabModule()); err != nil {
 		return err
 	}
 	return nil

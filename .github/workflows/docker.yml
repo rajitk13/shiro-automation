@@ -1,6 +1,13 @@
 name: Build and Push Docker Image
 
 on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - main
+      - master
   push:
     branches:
       - main
@@ -20,6 +27,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
 
     steps:
       - name: Checkout code
