@@ -156,7 +156,7 @@ func (c *Client) GetMRInfo(ctx context.Context, projectID, mrIID string) (map[st
 func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body string) error {
 	// URL encode the project ID to handle project paths with slashes
 	encodedProjectID := url.PathEscape(projectID)
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/notes", c.baseURL, encodedProjectID, mrIID)
+	apiURL := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/notes", c.baseURL, encodedProjectID, mrIID)
 
 	payload := map[string]string{
 		"body": body,
@@ -167,7 +167,7 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(jsonPayload))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -184,9 +184,12 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 	if resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode == http.StatusUnauthorized && c.tokenType == "job" {
-			return fmt.Errorf("unexpected status code %d: %s; CI_JOB_TOKEN was rejected by GitLab for this API call, configure GITLAB_TOKEN with api scope to post merge request comments", resp.StatusCode, string(respBody))
+			return fmt.Errorf("unexpected status code %d at %s: %s; CI_JOB_TOKEN was rejected, configure GITLAB_TOKEN with api scope", resp.StatusCode, apiURL, string(respBody))
 		}
-		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
+		if resp.StatusCode == http.StatusNotFound {
+			return fmt.Errorf("unexpected status code %d at %s: %s; verify token has api scope and access to project %s", resp.StatusCode, apiURL, string(respBody), projectID)
+		}
+		return fmt.Errorf("unexpected status code %d at %s: %s", resp.StatusCode, apiURL, string(respBody))
 	}
 
 	return nil
