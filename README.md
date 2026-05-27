@@ -318,7 +318,7 @@ For CI/CD environments, use the pre-built Docker image to avoid downloading the 
 docker pull ghcr.io/rajitk13/shiro-automation:latest
 
 # Run shiro
-docker run --rm ghcr.io/rajitk13/shiro-automation:latest --help
+docker run --rm ghcr.io/rajitk13/shiro-automation:latest shiro help
 ```
 
 **GitLab CI usage:**
