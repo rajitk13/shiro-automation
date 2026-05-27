@@ -1,14 +1,37 @@
 package cli
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/rkuthiala/shiro-automation/quickstart"
 )
 
 // InitCommand handles the project initialization command
 func InitCommand(args []string) {
+	flagSet := flag.NewFlagSet("init", flag.ExitOnError)
+	template := flagSet.String("template", "", "Template to use (code-review)")
+	interactive := flagSet.Bool("i", false, "Interactive config setup")
+	directConfig := flagSet.Bool("d", false, "Direct config mode (pass config values)")
+	showHelp := flagSet.Bool("help", false, "Show help information")
+	flagSet.Parse(args)
+
+	if *showHelp {
+		printInitHelp()
+		os.Exit(0)
+	}
+
+	// Handle template-based init
+	if *template != "" {
+		if err := quickstart.Initialize(*template, *interactive, *directConfig, flagSet.Args()); err != nil {
+			log.Fatalf("Failed to initialize template: %v", err)
+		}
+		return
+	}
+
 	fmt.Println("Initializing Shiro project...")
 
 	// Create .shiro and modules directory structure
@@ -158,4 +181,30 @@ models:
 	fmt.Println("  4. Run your workflow: shiro run")
 	fmt.Println()
 	fmt.Println("For more information: shiro help")
+}
+
+func printInitHelp() {
+	fmt.Println("Usage:")
+	fmt.Println("  shiro init [options]")
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  -template <name>  Template to use (code-review)")
+	fmt.Println("  -i               Interactive config setup")
+	fmt.Println("  -d               Direct config mode (pass config values as -d key=value)")
+	fmt.Println("  -help            Show help message")
+	fmt.Println()
+	fmt.Println("Available templates:")
+	templates := quickstart.List()
+	for _, t := range templates {
+		fmt.Printf("  - %s\n", t)
+	}
+	if len(templates) == 0 {
+		fmt.Println("  (none)")
+	}
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  shiro init")
+	fmt.Println("  shiro init -template code-review")
+	fmt.Println("  shiro init -template code-review -i")
+	fmt.Println("  shiro init -template code-review -d provider=openai -d api_key=sk-...")
 }

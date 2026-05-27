@@ -127,20 +127,66 @@ shiro add module jira
 shiro add module github.com/user/custom-module
 
 # Search for modules
-shiro search module slack
+shiro search module jira
 
-# List installed modules
+# List available modules
 shiro list modules
 
 # Remove a module
 shiro remove module jira
 
-# Get module information
+# Install module from GitHub
+shiro install module github.com/user/custom-module
+
+# Display module information
 shiro info module jira
 
 # Open module documentation
 shiro docs module jira
 ```
+
+### Quickstart Templates
+
+Shiro provides quickstart templates for common use cases. These templates scaffold complete workflows with pre-configured settings.
+
+```bash
+# List available templates
+shiro init -help
+
+# Initialize with a specific template
+shiro init -template code-review
+```
+
+#### GitLab Code Review Template
+
+The `code-review` template sets up an AI-powered GitLab MR code review workflow:
+
+```bash
+# Initialize with default config template
+shiro init -template code-review
+
+# Initialize with interactive config setup
+shiro init -template code-review -i
+
+# Initialize with direct config values
+shiro init -template code-review -d provider=openai -d api_key=sk-... -d model=gpt-4
+```
+
+This creates:
+- `.shiro/workflows/code-review.json` — AI-powered review workflow
+- `.shiro/config.yaml` — AI model configuration
+- `.gitlab-ci.yml` — GitLab CI integration (if not exists)
+
+The workflow:
+1. Gets git diff from the merge request
+2. Sends diff to AI provider for code review
+3. Posts AI-generated comments to the MR using GitLab CI job token
+
+**Supported providers:** OpenAI, Ollama, Custom (configured interactively with `-i`)
+
+**Interactive mode (-i):** Prompts for AI provider selection (OpenAI/Ollama/Custom) and configuration
+
+**Direct mode (-d):** Pass config values as flags: `-d provider=openai -d api_key=sk-... -d model=gpt-4`
 
 ### CLI Mode
 
