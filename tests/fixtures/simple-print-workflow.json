@@ -1,0 +1,21 @@
+{
+  "name": "simple-print-workflow",
+  "description": "Simple workflow for testing logging behavior",
+  "steps": [
+    {
+      "id": "print-hello",
+      "type": "print",
+      "config": {
+        "message": "Hello, World!"
+      }
+    },
+    {
+      "id": "print-status",
+      "type": "print",
+      "depends_on": ["print-hello"],
+      "config": {
+        "message": "Workflow is running successfully"
+      }
+    }
+  ]
+}

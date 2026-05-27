@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -72,6 +73,8 @@ func (e *Executor) Execute(
 		return nil, errors.NewWorkflowError(wf.Name, "", "failed to build execution graph", err)
 	}
 
+	quietWorkflow := wf.Settings.QuietMode
+
 	// Execute steps in topological order
 	for _, stepID := range graph.topologicalOrder() {
 		step := wf.GetStepByID(stepID)
@@ -92,7 +95,7 @@ func (e *Executor) Execute(
 		}
 
 		// Execute the step
-		result, err := e.executeStep(ctx, execCtx, *step)
+		result, err := e.executeStep(ctx, execCtx, *step, quietWorkflow)
 		if err != nil {
 			e.logger.Printf("Step %s failed: %v", stepID, err)
 			return execCtx, errors.NewWorkflowError(wf.Name, stepID, "step execution failed", err)
@@ -128,6 +131,7 @@ func (e *Executor) executeStep(
 	ctx context.Context,
 	execCtx *workflow.ExecutionContext,
 	step workflow.Step,
+	quietWorkflow bool,
 ) (*workflow.StepResult, error) {
 	// Resolve variables in step config
 	resolver := workflow.NewVariableResolver(execCtx)
@@ -160,10 +164,17 @@ func (e *Executor) executeStep(
 	var output map[string]interface{}
 	var execErr error
 
-	if step.Retry != nil {
-		output, execErr = e.executeWithRetry(ctx, module, execCtx, step, step.Retry)
+	runModule := func() (map[string]interface{}, error) {
+		if step.Retry != nil {
+			return e.executeWithRetry(ctx, module, execCtx, step, step.Retry)
+		}
+		return module.Run(ctx, execCtx, step)
+	}
+
+	if quietWorkflow || step.Quiet {
+		output, execErr = suppressStdout(runModule)
 	} else {
-		output, execErr = module.Run(ctx, execCtx, step)
+		output, execErr = runModule()
 	}
 
 	result := &workflow.StepResult{
@@ -240,4 +251,19 @@ func (e *Executor) executeWithRetry(
 	}
 
 	return nil, errors.NewWorkflowError("", step.ID, fmt.Sprintf("after %d attempts", maxAttempts), lastErr)
+}
+
+func suppressStdout(fn func() (map[string]interface{}, error)) (map[string]interface{}, error) {
+	originalStdout := os.Stdout
+	devNull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		return fn()
+	}
+	defer devNull.Close()
+
+	os.Stdout = devNull
+	output, execErr := fn()
+	os.Stdout = originalStdout
+
+	return output, execErr
 }

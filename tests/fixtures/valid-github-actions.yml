@@ -1,0 +1,15 @@
+name: Shiro Validate
+
+on:
+  pull_request:
+
+jobs:
+  shiro:
+    runs-on: ubuntu-latest
+    environment: review
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate workflow
+        run: shiro validate -workflow tests/fixtures/pause-workflow.json -ci tests/fixtures/valid-github-actions.yml
+      - name: Run workflow
+        run: shiro run -workflow tests/fixtures/pause-workflow.json -state-store filesystem

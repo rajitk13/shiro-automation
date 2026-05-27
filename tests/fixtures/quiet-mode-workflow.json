@@ -1,0 +1,24 @@
+{
+  "name": "quiet-mode-workflow",
+  "description": "Workflow for testing quiet mode logging",
+  "settings": {
+    "quiet_mode": true
+  },
+  "steps": [
+    {
+      "id": "print-hello",
+      "type": "print",
+      "config": {
+        "message": "This should not be printed"
+      }
+    },
+    {
+      "id": "print-status",
+      "type": "print",
+      "depends_on": ["print-hello"],
+      "config": {
+        "message": "This should also not be printed"
+      }
+    }
+  ]
+}

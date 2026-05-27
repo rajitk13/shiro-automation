@@ -108,3 +108,12 @@ func (g *executionGraph) missingDependencies(stepID string, completedSteps map[s
 
 	return missing
 }
+
+// GetExecutionOrder returns the execution order for a workflow
+func GetExecutionOrder(wf *workflow.Workflow) ([]string, error) {
+	graph, err := buildExecutionGraph(wf.Steps)
+	if err != nil {
+		return nil, err
+	}
+	return graph.topologicalOrder(), nil
+}

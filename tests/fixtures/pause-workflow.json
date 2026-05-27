@@ -1,0 +1,30 @@
+{
+  "name": "pause-workflow",
+  "description": "Workflow with a pause step for CI validation testing",
+  "steps": [
+    {
+      "id": "prepare",
+      "type": "print",
+      "config": {
+        "message": "prepare deployment"
+      }
+    },
+    {
+      "id": "approval",
+      "type": "print",
+      "depends_on": ["prepare"],
+      "pause": true,
+      "config": {
+        "message": "waiting for approval"
+      }
+    },
+    {
+      "id": "deploy",
+      "type": "print",
+      "depends_on": ["approval"],
+      "config": {
+        "message": "deploying"
+      }
+    }
+  ]
+}

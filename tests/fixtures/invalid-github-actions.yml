@@ -1,0 +1,12 @@
+name: Shiro Invalid
+
+on:
+  pull_request:
+
+jobs:
+  shiro:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run workflow
+        run: shiro run -workflow tests/fixtures/pause-workflow.json -state-store gitlab

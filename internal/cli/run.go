@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"sort"
@@ -27,6 +28,7 @@ func RunCommand(args []string) {
 	stateStoreType := flagSet.String("state-store", "gitlab", "State store type (memory, filesystem, gitlab)")
 	shiroDir := flagSet.String("shiro-dir", ".shiro", "Path to .shiro directory")
 	fresh := flagSet.Bool("fresh", false, "Delete existing workflow state before running")
+	dryRun := flagSet.Bool("dry-run", false, "Validate workflow and show execution plan without executing")
 	showHelp := flagSet.Bool("help", false, "Show help information")
 	flagSet.Parse(args)
 
@@ -74,7 +76,79 @@ func RunCommand(args []string) {
 		log.Fatalf("Workflow validation failed: %v", err)
 	}
 
+	if wf.Settings.QuietMode && !*dryRun {
+		logger.SetOutput(io.Discard)
+	}
+
 	logger.Printf("Loaded workflow: %s", wf.Name)
+
+	// Handle dry-run mode
+	if *dryRun {
+		logger.Println("\n=== Dry Run Mode ===")
+		logger.Println("Workflow will be validated but not executed")
+		logger.Printf("Workflow: %s", wf.Name)
+		if wf.Description != "" {
+			logger.Printf("Description: %s", wf.Description)
+		}
+		logger.Printf("Quiet Mode: %t", wf.Settings.QuietMode)
+		logger.Printf("Total Steps: %d", len(wf.Steps))
+		logger.Println("\n--- Execution Plan (DAG Order) ---")
+
+		// Load environment variables for dry-run
+		env := loadEnvironment()
+
+		// Create module registry for validation
+		registry := modules.NewRegistry()
+		if err := registerBuiltInModules(registry); err != nil {
+			log.Fatalf("Failed to register modules: %v", err)
+		}
+
+		// Discover and register subprocess plugin modules
+		modules.DiscoverSubprocessModules(registry, cfg.ShiroDir)
+
+		// Get execution order
+		execOrder, err := runtime.GetExecutionOrder(wf)
+		if err != nil {
+			log.Fatalf("Failed to determine execution order: %v", err)
+		}
+
+		// Print execution plan
+		for i, stepID := range execOrder {
+			step := wf.GetStepByID(stepID)
+			if step == nil {
+				continue
+			}
+			logger.Printf("\n%d. Step: %s", i+1, step.ID)
+			logger.Printf("   Type: %s", step.Type)
+			if len(step.DependsOn) > 0 {
+				logger.Printf("   Depends On: %v", step.DependsOn)
+			}
+			if len(step.Config) > 0 {
+				logger.Printf("   Config: %v keys", len(step.Config))
+			}
+			if step.Quiet {
+				logger.Printf("   Quiet: true")
+			}
+		}
+
+		logger.Println("\n--- Environment Variables ---")
+		// Show CI-specific variables
+		ciVars := []string{"CI_PROJECT_ID", "CI_MERGE_REQUEST_IID", "CI_COMMIT_SHA", "CI_COMMIT_REF_NAME", "CI_SERVER_URL"}
+		for _, varName := range ciVars {
+			if val, ok := env[varName]; ok {
+				logger.Printf("%s: %s", varName, val)
+			} else {
+				logger.Printf("%s: (not set)", varName)
+			}
+		}
+
+		logger.Println("\n--- State Store ---")
+		logger.Printf("Type: %s", cfg.StateStore)
+
+		logger.Println("\n=== Dry Run Complete ===")
+		logger.Println("Workflow is valid and ready to execute")
+		os.Exit(0)
+	}
 
 	// Load model configuration
 	modelConfig, err := config.LoadModelConfig(cfg.ConfigFile)
@@ -343,6 +417,11 @@ func outputResults(execCtx *workflow.ExecutionContext, wf *workflow.Workflow) {
 	sort.Strings(stepIDs)
 
 	for _, stepID := range stepIDs {
+		step := wf.GetStepByID(stepID)
+		if step != nil && step.Quiet {
+			continue
+		}
+
 		result := execCtx.Steps[stepID]
 		fmt.Printf("\nStep: %s\n", stepID)
 		fmt.Printf("  Success: %v\n", result.Success)
@@ -383,6 +462,7 @@ func printRunHelp() {
 	fmt.Println("  -state-store <type> State store type: memory, filesystem, gitlab (default \"gitlab\")")
 	fmt.Println("  -shiro-dir <path>  Path to .shiro directory (default \".shiro\")")
 	fmt.Println("  -fresh             Delete existing workflow state before running")
+	fmt.Println("  -dry-run          Validate workflow and show execution plan without executing")
 	fmt.Println("  -help              Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")

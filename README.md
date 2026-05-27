@@ -396,6 +396,64 @@ Workflows are defined in JSON:
 }
 ```
 
+### Dry Run Mode
+
+Validate and preview workflow execution without actually running it:
+
+```bash
+shiro run -dry-run
+```
+
+**What dry-run does:**
+- Validates workflow structure and configuration
+- Shows execution order (DAG)
+- Displays module types and configurations
+- Lists available environment variables
+- Shows state store configuration
+- Exits without executing any modules
+
+**Use cases:**
+- Validate workflows before deployment
+- Debug workflow configuration issues
+- Preview execution plan
+- CI/CD pipeline testing without side effects
+
+**Example output:**
+```
+=== Dry Run Mode ===
+Workflow will be validated but not executed
+Workflow: my-workflow
+Total Steps: 3
+
+--- Execution Plan (DAG Order) ---
+
+1. Step: step1
+   Type: git.diff
+   Config: 2 keys
+
+2. Step: step2
+   Type: ai.generate
+   Depends On: [step1]
+   Config: 3 keys
+
+3. Step: step3
+   Type: print
+   Depends On: [step2]
+
+--- Environment Variables ---
+CI_PROJECT_ID: 12345
+CI_MERGE_REQUEST_IID: 678
+CI_COMMIT_SHA: abc123
+CI_COMMIT_REF_NAME: main
+CI_SERVER_URL: https://gitlab.com
+
+--- State Store ---
+Type: gitlab
+
+=== Dry Run Complete ===
+Workflow is valid and ready to execute
+```
+
 ## Available Modules
 
 ### Subprocess Modules

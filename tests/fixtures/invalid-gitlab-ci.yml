@@ -1,0 +1,8 @@
+stages:
+  - run
+
+run-shiro:
+  stage: run
+  image: ghcr.io/rajitk13/shiro-automation:latest
+  script:
+    - shiro run -workflow tests/fixtures/pause-workflow.json -state-store gitlab
