@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 )
 
@@ -81,7 +82,8 @@ func (c *Client) setAuthToken(req *http.Request) {
 
 // GetDiff gets the diff for a merge request
 func (c *Client) GetDiff(ctx context.Context, projectID, mrIID string) (string, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, projectID, mrIID)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, encodedProjectID, mrIID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -121,7 +123,8 @@ func (c *Client) GetDiff(ctx context.Context, projectID, mrIID string) (string, 
 
 // GetMRInfo gets information about a merge request
 func (c *Client) GetMRInfo(ctx context.Context, projectID, mrIID string) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s", c.baseURL, projectID, mrIID)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s", c.baseURL, encodedProjectID, mrIID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -151,7 +154,9 @@ func (c *Client) GetMRInfo(ctx context.Context, projectID, mrIID string) (map[st
 
 // PostMRComment posts a comment to a merge request
 func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body string) error {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/notes", c.baseURL, projectID, mrIID)
+	// URL encode the project ID to handle project paths with slashes
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/notes", c.baseURL, encodedProjectID, mrIID)
 
 	payload := map[string]string{
 		"body": body,
@@ -189,7 +194,8 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 
 // UploadArtifact uploads a file as a GitLab job artifact
 func (c *Client) UploadArtifact(ctx context.Context, projectID, jobID, artifactPath string, content []byte) error {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, projectID, jobID, artifactPath)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, encodedProjectID, jobID, artifactPath)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(content))
 	if err != nil {
@@ -215,7 +221,8 @@ func (c *Client) UploadArtifact(ctx context.Context, projectID, jobID, artifactP
 
 // DownloadArtifact downloads a file from GitLab job artifacts
 func (c *Client) DownloadArtifact(ctx context.Context, projectID, jobID, artifactPath string) ([]byte, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, projectID, jobID, artifactPath)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts/%s", c.baseURL, encodedProjectID, jobID, artifactPath)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -240,7 +247,8 @@ func (c *Client) DownloadArtifact(ctx context.Context, projectID, jobID, artifac
 
 // GetCommitInfo gets information about a specific commit
 func (c *Client) GetCommitInfo(ctx context.Context, projectID, commitSHA string) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", c.baseURL, projectID, commitSHA)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", c.baseURL, encodedProjectID, commitSHA)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -300,7 +308,8 @@ func (c *Client) GetUserInfo(ctx context.Context, userID string) (map[string]int
 
 // GetMRParticipants gets participants in a merge request
 func (c *Client) GetMRParticipants(ctx context.Context, projectID, mrIID string) ([]map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/participants", c.baseURL, projectID, mrIID)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/participants", c.baseURL, encodedProjectID, mrIID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -330,7 +339,8 @@ func (c *Client) GetMRParticipants(ctx context.Context, projectID, mrIID string)
 
 // GetFilesChanged gets list of changed files in a merge request
 func (c *Client) GetFilesChanged(ctx context.Context, projectID, mrIID string) ([]map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, projectID, mrIID)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, encodedProjectID, mrIID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -363,7 +373,8 @@ func (c *Client) GetFilesChanged(ctx context.Context, projectID, mrIID string) (
 
 // ListJobArtifacts lists all artifacts for a job
 func (c *Client) ListJobArtifacts(ctx context.Context, projectID, jobID string) ([]string, error) {
-	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts", c.baseURL, projectID, jobID)
+	encodedProjectID := url.PathEscape(projectID)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts", c.baseURL, encodedProjectID, jobID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
