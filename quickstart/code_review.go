@@ -57,7 +57,7 @@ func (t *CodeReviewTemplate) Initialize(interactive, directConfig bool, configAr
       "type": "ai.generate",
       "depends_on": ["get-diff"],
       "config": {
-        "prompt": "Review this code diff:\n\n{{steps.get-diff.diff}}\n\nProvide free text comments with file path and line number for each issue found."
+        "prompt": "Review this code diff:\n\n{{steps.get-diff.diff}}\n\nProvide free text comments with file path and line number for each issue found in format: 'path/to/file.go:42 - issue description'"
       }
     },
     {
@@ -65,8 +65,11 @@ func (t *CodeReviewTemplate) Initialize(interactive, directConfig bool, configAr
       "type": "gitlab",
       "depends_on": ["ai-review"],
       "config": {
-        "operation": "post_comment",
-        "body": "{{steps.ai-review.content}}"
+        "operation": "post_inline_comments",
+        "body": "{{steps.ai-review.content}}",
+        "output_format": "text",
+        "api_type": "discussions",
+        "dedup": true
       }
     }
   ]

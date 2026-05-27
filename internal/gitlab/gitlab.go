@@ -374,6 +374,92 @@ func (c *Client) GetFilesChanged(ctx context.Context, projectID, mrIID string) (
 	return result.Changes, nil
 }
 
+// GetMRNotes gets all notes (comments) from a merge request
+func (c *Client) GetMRNotes(ctx context.Context, projectID, mrIID string) ([]map[string]interface{}, error) {
+	encodedProjectID := url.PathEscape(projectID)
+	apiURL := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/notes", c.baseURL, encodedProjectID, mrIID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.setAuthToken(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d at %s: %s", resp.StatusCode, apiURL, string(body))
+	}
+
+	var notes []map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&notes); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return notes, nil
+}
+
+// PostMRDiscussion posts an inline/diff comment to a merge request
+func (c *Client) PostMRDiscussion(ctx context.Context, projectID, mrIID, body, filePath string, line, newLine int, baseSHA, headSHA string) error {
+	encodedProjectID := url.PathEscape(projectID)
+	apiURL := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/discussions", c.baseURL, encodedProjectID, mrIID)
+
+	position := map[string]interface{}{
+		"base_sha":      baseSHA,
+		"head_sha":      headSHA,
+		"start_sha":     baseSHA,
+		"position_type": "text",
+	}
+
+	if line > 0 {
+		position["old_line"] = line
+	}
+	if newLine > 0 {
+		position["new_line"] = newLine
+	}
+	if filePath != "" {
+		position["new_path"] = filePath
+		position["old_path"] = filePath
+	}
+
+	payload := map[string]interface{}{
+		"body":     body,
+		"position": position,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(jsonPayload))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.setAuthToken(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status code %d at %s: %s", resp.StatusCode, apiURL, string(respBody))
+	}
+
+	return nil
+}
+
 // ListJobArtifacts lists all artifacts for a job
 func (c *Client) ListJobArtifacts(ctx context.Context, projectID, jobID string) ([]string, error) {
 	encodedProjectID := url.PathEscape(projectID)

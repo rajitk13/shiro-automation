@@ -470,8 +470,12 @@ Performs git operations.
 GitLab operations for merge requests, commits, and users.
 
 **Config:**
-- `operation` (required): Operation to perform: `post_comment`, `get_commit_info`, `get_user_info`, `get_mr_participants`, `get_files_changed`
-- `body`: Comment body to post (for `post_comment` operation)
+- `operation` (required): Operation to perform: `post_comment`, `post_inline_comments`, `get_commit_info`, `get_user_info`, `get_mr_participants`, `get_files_changed`
+- `body`: Comment body to post (for `post_comment` and `post_inline_comments` with text format)
+- `comments`: Array of comment objects for `post_inline_comments` with JSON format
+- `output_format`: Output format for `post_inline_comments`: `json` or `text` (default: `text`)
+- `api_type`: API type for `post_inline_comments`: `notes` (general MR comments) or `discussions` (inline line comments, default: `discussions`)
+- `dedup`: Enable deduplication for `post_inline_comments` (default: `true`)
 - `commit_sha`: Commit SHA to get info for (for `get_commit_info` operation, defaults to `CI_COMMIT_SHA`)
 - `user_id`: User ID to get info for (for `get_user_info` operation)
 
@@ -479,9 +483,9 @@ GitLab operations for merge requests, commits, and users.
 - `CI_PROJECT_ID`: GitLab project ID (required for most operations)
 - `CI_MERGE_REQUEST_IID`: Merge request IID (required for MR operations)
 - `CI_JOB_TOKEN`: GitLab CI job token (default authentication)
-- `GITLAB_TOKEN`: Personal access token (alternative to job token)
+- `GITLAB_TOKEN`: Personal access token (alternative to job token, required for MR comments with `api` scope)
 
-**Example:**
+**Example - Simple Comment:**
 ```json
 {
   "id": "post-comment",
@@ -492,6 +496,51 @@ GitLab operations for merge requests, commits, and users.
     "body": "{{steps.ai-review.content}}"
   }
 }
+```
+
+**Example - Inline Comments (Text Format):**
+```json
+{
+  "id": "post-inline-comments",
+  "type": "gitlab",
+  "depends_on": ["ai-review"],
+  "config": {
+    "operation": "post_inline_comments",
+    "body": "{{steps.ai-review.content}}",
+    "output_format": "text",
+    "api_type": "discussions",
+    "dedup": true
+  }
+}
+```
+
+**Example - Inline Comments (JSON Format):**
+```json
+{
+  "id": "post-inline-comments",
+  "type": "gitlab",
+  "depends_on": ["ai-review"],
+  "config": {
+    "operation": "post_inline_comments",
+    "comments": "{{steps.ai-review.comments}}",
+    "output_format": "json",
+    "api_type": "discussions",
+    "dedup": true
+  }
+}
+```
+
+**AI Prompt for Text Format:**
+```
+Review this code diff and provide comments in format: 'path/to/file.go:42 - issue description'
+```
+
+**AI Prompt for JSON Format:**
+```
+Review this code diff and return JSON array:
+[
+  {"file": "path/to/file.go", "line": 42, "comment": "issue description"}
+]
 ```
 
 ### `ai.generate`
