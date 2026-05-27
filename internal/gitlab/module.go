@@ -55,45 +55,45 @@ func (m *GitLabModule) Metadata() modules.ModuleMetadata {
 		Name:        "gitlab",
 		Description: "GitLab operations for merge requests, commits, and users",
 		InputSchema: map[string]modules.SchemaField{
-			"operation": modules.SchemaField{
+			"operation": {
 				Type:        "string",
 				Description: "Operation to perform: post_comment, get_commit_info, get_user_info, get_mr_participants, get_files_changed",
 				Required:    true,
 			},
-			"body": modules.SchemaField{
+			"body": {
 				Type:        "string",
 				Description: "Comment body to post (for post_comment operation)",
 				Required:    false,
 			},
-			"commit_sha": modules.SchemaField{
+			"commit_sha": {
 				Type:        "string",
 				Description: "Commit SHA to get info for (for get_commit_info operation, defaults to CI_COMMIT_SHA)",
 				Required:    false,
 			},
-			"user_id": modules.SchemaField{
+			"user_id": {
 				Type:        "string",
 				Description: "User ID to get info for (for get_user_info operation)",
 				Required:    false,
 			},
 		},
 		OutputSchema: map[string]modules.SchemaField{
-			"success": modules.SchemaField{
+			"success": {
 				Type:        "boolean",
 				Description: "Operation success status",
 			},
-			"message": modules.SchemaField{
+			"message": {
 				Type:        "string",
 				Description: "Success or error message",
 			},
-			"info": modules.SchemaField{
+			"info": {
 				Type:        "object",
 				Description: "Commit or user information (for get_commit_info and get_user_info operations)",
 			},
-			"participants": modules.SchemaField{
+			"participants": {
 				Type:        "array",
 				Description: "List of MR participants (for get_mr_participants operation)",
 			},
-			"files": modules.SchemaField{
+			"files": {
 				Type:        "array",
 				Description: "List of changed files (for get_files_changed operation)",
 			},
