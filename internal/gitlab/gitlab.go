@@ -12,9 +12,10 @@ import (
 
 // Client is a GitLab API client
 type Client struct {
-	baseURL string
-	token   string
-	client  *http.Client
+	baseURL   string
+	token     string
+	tokenType string // "private" or "job"
+	client    *http.Client
 }
 
 // NewClient creates a new GitLab client
@@ -25,23 +26,27 @@ func NewClient() *Client {
 	}
 
 	token := os.Getenv("GITLAB_TOKEN")
+	tokenType := "private"
 	if token == "" {
 		token = os.Getenv("CI_JOB_TOKEN")
+		tokenType = "job"
 	}
 
 	return &Client{
-		baseURL: baseURL,
-		token:   token,
-		client:  &http.Client{},
+		baseURL:   baseURL,
+		token:     token,
+		tokenType: tokenType,
+		client:    &http.Client{},
 	}
 }
 
 // NewClientWithConfig creates a new GitLab client with custom config
 func NewClientWithConfig(baseURL, token string) *Client {
 	return &Client{
-		baseURL: baseURL,
-		token:   token,
-		client:  &http.Client{},
+		baseURL:   baseURL,
+		token:     token,
+		tokenType: "private",
+		client:    &http.Client{},
 	}
 }
 
@@ -65,6 +70,15 @@ func GetBranch() string {
 	return os.Getenv("CI_COMMIT_REF_NAME")
 }
 
+// setAuthToken sets the appropriate authentication header based on token type
+func (c *Client) setAuthToken(req *http.Request) {
+	if c.tokenType == "job" {
+		req.Header.Set("JOB-TOKEN", c.token)
+	} else {
+		req.Header.Set("PRIVATE-TOKEN", c.token)
+	}
+}
+
 // GetDiff gets the diff for a merge request
 func (c *Client) GetDiff(ctx context.Context, projectID, mrIID string) (string, error) {
 	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, projectID, mrIID)
@@ -74,7 +88,7 @@ func (c *Client) GetDiff(ctx context.Context, projectID, mrIID string) (string, 
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -114,7 +128,7 @@ func (c *Client) GetMRInfo(ctx context.Context, projectID, mrIID string) (map[st
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -153,7 +167,7 @@ func (c *Client) PostMRComment(ctx context.Context, projectID, mrIID, body strin
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
@@ -179,7 +193,7 @@ func (c *Client) UploadArtifact(ctx context.Context, projectID, jobID, artifactP
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := c.client.Do(req)
@@ -205,7 +219,7 @@ func (c *Client) DownloadArtifact(ctx context.Context, projectID, jobID, artifac
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -230,7 +244,7 @@ func (c *Client) GetCommitInfo(ctx context.Context, projectID, commitSHA string)
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -260,7 +274,7 @@ func (c *Client) GetUserInfo(ctx context.Context, userID string) (map[string]int
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -290,7 +304,7 @@ func (c *Client) GetMRParticipants(ctx context.Context, projectID, mrIID string)
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -320,7 +334,7 @@ func (c *Client) GetFilesChanged(ctx context.Context, projectID, mrIID string) (
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -353,7 +367,7 @@ func (c *Client) ListJobArtifacts(ctx context.Context, projectID, jobID string) 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.token)
+	c.setAuthToken(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
