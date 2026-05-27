@@ -221,6 +221,129 @@ func (c *Client) DownloadArtifact(ctx context.Context, projectID, jobID, artifac
 	return io.ReadAll(resp.Body)
 }
 
+// GetCommitInfo gets information about a specific commit
+func (c *Client) GetCommitInfo(ctx context.Context, projectID, commitSHA string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", c.baseURL, projectID, commitSHA)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("PRIVATE-TOKEN", c.token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var info map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return info, nil
+}
+
+// GetUserInfo gets information about a user
+func (c *Client) GetUserInfo(ctx context.Context, userID string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/api/v4/users/%s", c.baseURL, userID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("PRIVATE-TOKEN", c.token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var info map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return info, nil
+}
+
+// GetMRParticipants gets participants in a merge request
+func (c *Client) GetMRParticipants(ctx context.Context, projectID, mrIID string) ([]map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/participants", c.baseURL, projectID, mrIID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("PRIVATE-TOKEN", c.token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var participants []map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&participants); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return participants, nil
+}
+
+// GetFilesChanged gets list of changed files in a merge request
+func (c *Client) GetFilesChanged(ctx context.Context, projectID, mrIID string) ([]map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests/%s/changes", c.baseURL, projectID, mrIID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("PRIVATE-TOKEN", c.token)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Changes []map[string]interface{} `json:"changes"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Changes, nil
+}
+
 // ListJobArtifacts lists all artifacts for a job
 func (c *Client) ListJobArtifacts(ctx context.Context, projectID, jobID string) ([]string, error) {
 	url := fmt.Sprintf("%s/api/v4/projects/%s/jobs/%s/artifacts", c.baseURL, projectID, jobID)
