@@ -16,7 +16,7 @@ import (
 func ModuleCommand(args []string) {
 	if len(args) < 1 {
 		printModuleHelp()
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	subcommand := args[0]
@@ -39,6 +39,7 @@ func ModuleCommand(args []string) {
 		moduleDocs(subArgs)
 	case "help":
 		printModuleHelp()
+		os.Exit(0)
 	default:
 		fmt.Printf("Unknown module command: %s\n", subcommand)
 		printModuleHelp()

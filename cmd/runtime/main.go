@@ -12,7 +12,7 @@ var version = "dev" // injected via ldflags at build time
 func main() {
 	if len(os.Args) < 2 {
 		printHelp()
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	command := os.Args[1]
@@ -59,6 +59,7 @@ func main() {
 		cli.ModuleCommand(args)
 	case "help", "-help", "--help":
 		printHelp()
+		os.Exit(0)
 	case "-v", "--version":
 		printVersion()
 	default:
