@@ -45,7 +45,7 @@ func (t *CodeReviewTemplate) Initialize(interactive, directConfig bool, configAr
   "steps": [
     {
       "id": "get-diff",
-      "type": "git",
+      "type": "git.diff",
       "config": {
         "operation": "diff",
         "base": "{{env.CI_MERGE_REQUEST_DIFF_BASE_SHA}}",
@@ -54,20 +54,18 @@ func (t *CodeReviewTemplate) Initialize(interactive, directConfig bool, configAr
     },
     {
       "id": "ai-review",
-      "type": "ai",
+      "type": "ai.generate",
       "depends_on": ["get-diff"],
       "config": {
-        "prompt": "Review this code diff. Provide free text comments with file path and line number for each issue found.",
-        "input": "{{steps.get-diff.diff}}"
+        "prompt": "Review this code diff:\n\n{{steps.get-diff.diff}}\n\nProvide free text comments with file path and line number for each issue found."
       }
     },
     {
-      "id": "print-review",
-      "type": "print",
+      "id": "post-comment",
+      "type": "gitlab",
       "depends_on": ["ai-review"],
       "config": {
-        "level": "info",
-        "message": "{{steps.ai-review.content}}"
+        "body": "{{steps.ai-review.content}}"
       }
     }
   ]
