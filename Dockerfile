@@ -33,5 +33,4 @@ RUN apk add --no-cache git curl
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-ENTRYPOINT ["/usr/local/bin/shiro"]
-CMD ["help"]
+CMD ["shiro", "help"]
