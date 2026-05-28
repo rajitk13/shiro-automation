@@ -956,7 +956,7 @@ docs(readme): update installation instructions
 
 ## License
 
-MIT
+Apache License 2.0
 
 ## Contributing
 
