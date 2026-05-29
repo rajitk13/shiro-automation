@@ -4,10 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/rkuthiala/shiro-automation/internal/errors"
 )
+
+// envVarPattern matches {{env.VARIABLE}} templates anywhere within a string.
+var envVarPattern = regexp.MustCompile(`\{\{env\.([^}]+)\}\}`)
 
 // WorkflowSettings controls workflow execution behavior
 type WorkflowSettings struct {
@@ -214,14 +218,19 @@ func resolveEnvVars(wf *Workflow) {
 	}
 }
 
-// resolveEnvVarString resolves a single {{env.VARIABLE}} template
+// resolveEnvVarString resolves {{env.VARIABLE}} templates within a string,
+// including templates embedded in larger strings (e.g. "https://{{env.HOST}}/api").
+// Templates whose environment variable is unset are left untouched.
 func resolveEnvVarString(input string) string {
-	if strings.HasPrefix(input, "{{env.") && strings.HasSuffix(input, "}}") {
-		envVar := strings.TrimPrefix(input, "{{env.")
-		envVar = strings.TrimSuffix(envVar, "}}")
+	return envVarPattern.ReplaceAllStringFunc(input, func(match string) string {
+		sub := envVarPattern.FindStringSubmatch(match)
+		if len(sub) != 2 {
+			return match
+		}
+		envVar := strings.TrimSpace(sub[1])
 		if envValue := os.Getenv(envVar); envValue != "" {
 			return envValue
 		}
-	}
-	return input
+		return match
+	})
 }

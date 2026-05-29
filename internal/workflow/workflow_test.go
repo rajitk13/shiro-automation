@@ -4,6 +4,31 @@ import (
 	"testing"
 )
 
+func TestResolveEnvVarString(t *testing.T) {
+	t.Setenv("SHIRO_TEST_HOST", "example.com")
+	t.Setenv("SHIRO_TEST_TOKEN", "secret")
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "full string match", input: "{{env.SHIRO_TEST_TOKEN}}", want: "secret"},
+		{name: "embedded single", input: "https://{{env.SHIRO_TEST_HOST}}/api", want: "https://example.com/api"},
+		{name: "multiple vars", input: "{{env.SHIRO_TEST_HOST}}:{{env.SHIRO_TEST_TOKEN}}", want: "example.com:secret"},
+		{name: "unset left untouched", input: "Bearer {{env.SHIRO_TEST_MISSING}}", want: "Bearer {{env.SHIRO_TEST_MISSING}}"},
+		{name: "no template", input: "plain-value", want: "plain-value"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveEnvVarString(tt.input); got != tt.want {
+				t.Errorf("resolveEnvVarString(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestWorkflowValidation(t *testing.T) {
 	tests := []struct {
 		name    string

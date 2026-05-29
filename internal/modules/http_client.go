@@ -110,71 +110,68 @@ func (c *LoadBalancedClient) openCircuit(endpoint string) {
 }
 
 // Execute sends an execute request to an HTTP module with load balancing
-func (c *LoadBalancedClient) Execute(ctx context.Context, endpoints []string, request ExecuteRequest) (ExecuteResponse, error) {
-	if len(endpoints) == 1 {
-		return c.httpClient.Execute(ctx, endpoints[0], request)
+func (c *LoadBalancedClient) Execute(ctx context.Context, request ExecuteRequest) (ExecuteResponse, error) {
+	if len(c.endpoints) == 1 {
+		return c.httpClient.Execute(ctx, c.endpoints[0], request)
 	}
-
-	// Use load balancing for multiple endpoints
-	lbClient := NewLoadBalancedClient(endpoints, c.httpClient.timeout)
 
 	var lastError error
 	for i := 0; i < c.retryAttempts; i++ {
-		endpoint := lbClient.getNextEndpoint()
+		endpoint := c.getNextEndpoint()
 		result, err := c.httpClient.Execute(ctx, endpoint, request)
 		if err == nil {
+			c.markHealthy(endpoint)
 			return result, nil
 		}
 
 		lastError = err
-		lbClient.markUnhealthy(endpoint)
-		lbClient.openCircuit(endpoint)
+		c.markUnhealthy(endpoint)
+		c.openCircuit(endpoint)
 	}
 
 	return ExecuteResponse{}, fmt.Errorf("all endpoints failed after %d attempts: %w", c.retryAttempts, lastError)
 }
 
 // Metadata retrieves metadata from an HTTP module with load balancing
-func (c *LoadBalancedClient) Metadata(ctx context.Context, endpoints []string) (MetadataResponse, error) {
-	if len(endpoints) == 1 {
-		return c.httpClient.Metadata(ctx, endpoints[0])
+func (c *LoadBalancedClient) Metadata(ctx context.Context) (MetadataResponse, error) {
+	if len(c.endpoints) == 1 {
+		return c.httpClient.Metadata(ctx, c.endpoints[0])
 	}
-
-	lbClient := NewLoadBalancedClient(endpoints, c.httpClient.timeout)
 
 	var lastError error
 	for i := 0; i < c.retryAttempts; i++ {
-		endpoint := lbClient.getNextEndpoint()
+		endpoint := c.getNextEndpoint()
 		result, err := c.httpClient.Metadata(ctx, endpoint)
 		if err == nil {
+			c.markHealthy(endpoint)
 			return result, nil
 		}
 
 		lastError = err
-		lbClient.markUnhealthy(endpoint)
+		c.markUnhealthy(endpoint)
+		c.openCircuit(endpoint)
 	}
 
 	return MetadataResponse{}, fmt.Errorf("all endpoints failed after %d attempts: %w", c.retryAttempts, lastError)
 }
 
 // Health checks the health of an HTTP module with load balancing
-func (c *LoadBalancedClient) Health(ctx context.Context, endpoints []string) (HealthResponse, error) {
-	if len(endpoints) == 1 {
-		return c.httpClient.Health(ctx, endpoints[0])
+func (c *LoadBalancedClient) Health(ctx context.Context) (HealthResponse, error) {
+	if len(c.endpoints) == 1 {
+		return c.httpClient.Health(ctx, c.endpoints[0])
 	}
-
-	lbClient := NewLoadBalancedClient(endpoints, c.httpClient.timeout)
 
 	var lastError error
 	for i := 0; i < c.retryAttempts; i++ {
-		endpoint := lbClient.getNextEndpoint()
+		endpoint := c.getNextEndpoint()
 		result, err := c.httpClient.Health(ctx, endpoint)
 		if err == nil {
+			c.markHealthy(endpoint)
 			return result, nil
 		}
 
 		lastError = err
-		lbClient.markUnhealthy(endpoint)
+		c.markUnhealthy(endpoint)
 	}
 
 	return HealthResponse{}, fmt.Errorf("all endpoints failed after %d attempts: %w", c.retryAttempts, lastError)
@@ -182,99 +179,72 @@ func (c *LoadBalancedClient) Health(ctx context.Context, endpoints []string) (He
 
 // Execute sends an execute request to an HTTP module
 func (c *HTTPModuleClient) Execute(ctx context.Context, endpoint string, request ExecuteRequest) (ExecuteResponse, error) {
-	result, err := c.sendRequest(ctx, endpoint+"/execute", request)
-	if err != nil {
+	var resp ExecuteResponse
+	if err := c.doRequest(ctx, endpoint+"/execute", request, &resp); err != nil {
 		return ExecuteResponse{}, err
-	}
-	resp, ok := result.(ExecuteResponse)
-	if !ok {
-		return ExecuteResponse{}, fmt.Errorf("unexpected response type for execute")
 	}
 	return resp, nil
 }
 
 // Metadata retrieves metadata from an HTTP module
 func (c *HTTPModuleClient) Metadata(ctx context.Context, endpoint string) (MetadataResponse, error) {
-	result, err := c.sendRequest(ctx, endpoint+"/metadata", nil)
-	if err != nil {
+	var resp MetadataResponse
+	if err := c.doRequest(ctx, endpoint+"/metadata", nil, &resp); err != nil {
 		return MetadataResponse{}, err
-	}
-	resp, ok := result.(MetadataResponse)
-	if !ok {
-		return MetadataResponse{}, fmt.Errorf("unexpected response type for metadata")
 	}
 	return resp, nil
 }
 
 // Health checks the health of an HTTP module
 func (c *HTTPModuleClient) Health(ctx context.Context, endpoint string) (HealthResponse, error) {
-	result, err := c.sendRequest(ctx, endpoint+"/health", nil)
-	if err != nil {
+	var resp HealthResponse
+	if err := c.doRequest(ctx, endpoint+"/health", nil, &resp); err != nil {
 		return HealthResponse{}, err
-	}
-	resp, ok := result.(HealthResponse)
-	if !ok {
-		return HealthResponse{}, fmt.Errorf("unexpected response type for health")
 	}
 	return resp, nil
 }
 
-// sendRequest sends a generic HTTP request to a module endpoint
-func (c *HTTPModuleClient) sendRequest(ctx context.Context, url string, body interface{}) (interface{}, error) {
+// doRequest sends an HTTP request to a module endpoint and decodes the JSON
+// response into out. A GET request is sent when body is nil, otherwise a POST
+// with the JSON-encoded body. The response type is determined by the caller via
+// out rather than by inspecting the payload.
+func (c *HTTPModuleClient) doRequest(ctx context.Context, url string, body, out interface{}) error {
+	method := http.MethodGet
 	var reqBody io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+			return fmt.Errorf("failed to marshal request body: %w", err)
 		}
 		reqBody = bytes.NewReader(jsonBody)
+		method = http.MethodPost
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, reqBody)
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
-
 	if body != nil {
-		req.Method = "POST"
 		req.Header.Set("Content-Type", "application/json")
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
+		return fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Determine response type based on URL path
-	if body != nil {
-		var result ExecuteResponse
-		if err := json.Unmarshal(respBody, &result); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal execute response: %w", err)
-		}
-		return result, nil
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	// Try to determine response type
-	var metadata MetadataResponse
-	if err := json.Unmarshal(respBody, &metadata); err == nil && metadata.Name != "" {
-		return metadata, nil
+	if err := json.Unmarshal(respBody, out); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
-	var health HealthResponse
-	if err := json.Unmarshal(respBody, &health); err == nil {
-		return health, nil
-	}
-
-	return nil, fmt.Errorf("failed to determine response type")
+	return nil
 }

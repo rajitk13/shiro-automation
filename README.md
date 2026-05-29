@@ -331,18 +331,32 @@ test-jira:
     - shiro run
 ```
 
-The image includes:
-- Shiro binary (latest release)
-- Go 1.23 (for go-run subprocess mode)
-- Git and curl (for module operations)
-- Alpine 3.20 base (minimal size)
+#### Image variants
 
-**Available tags:**
-- `latest` — latest release
-- `vX.Y.Z` — semantic version tags
-- `<sha>` — commit-based tags
+Two image variants are published:
 
-Multi-arch support: `linux/amd64`, `linux/arm64`
+- **`slim` (default)** — `latest`, `vX.Y.Z`. Alpine base with the `shiro` binary, `git`, and `curl`. Use this for built-in modules and for subprocess modules installed as pre-built binaries. Small image.
+- **`toolchain`** — `latest-go`, `vX.Y.Z-go`. Based on `golang:1.23-alpine` and includes the full Go toolchain. Use this **only** if you run go-run subprocess modules (`shiro add module github.com/...` that execute via `go run`).
+
+```bash
+# Common case (small image)
+docker pull ghcr.io/rajitk13/shiro-automation:latest
+
+# go-run subprocess modules
+docker pull ghcr.io/rajitk13/shiro-automation:latest-go
+```
+
+Both variants include the `shiro` binary, `git`, and `curl`, support `linux/amd64` and `linux/arm64`, and embed the release version (`shiro --version`).
+
+**Building locally:**
+
+```bash
+# Default slim image
+docker build -t shiro .
+
+# Toolchain image (go-run support)
+docker build --target toolchain -t shiro:go .
+```
 
 ## Simplified User Experience
 

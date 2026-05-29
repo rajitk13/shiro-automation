@@ -184,7 +184,7 @@ func RunCommand(args []string) {
 				if len(endpoints) > 0 {
 					httpModuleConfig := &modules.HTTPModuleConfig{
 						Name:     moduleConfig.Name,
-						Endpoint: endpoints[0], // Use first endpoint for now
+						Endpoint: endpoints[0], // primary endpoint; failover is handled by LoadBalancedClient
 						Config:   make(map[string]interface{}),
 					}
 					registry.RegisterHTTPModule(name, httpModuleConfig)

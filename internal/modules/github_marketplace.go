@@ -132,25 +132,6 @@ func (c *GitHubClient) GetModuleMetadata(repo string) (*GitHubModuleMetadata, er
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// Fetch README for additional metadata
-	readmeURL := fmt.Sprintf("https://api.github.com/repos/%s/readme", repo)
-	readmeReq, err := http.NewRequest("GET", readmeURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create README request: %w", err)
-	}
-
-	if c.token != "" {
-		readmeReq.Header.Set("Authorization", fmt.Sprintf("token %s", c.token))
-		readmeReq.Header.Add("Accept", "application/vnd.github.v3.raw")
-	}
-
-	readmeResp, err := c.httpClient.Do(readmeReq)
-	if err == nil && readmeResp.StatusCode == http.StatusOK {
-		defer readmeResp.Body.Close()
-		// README content can be parsed for additional metadata
-		_ = readmeResp.Body // Can be used for extracting documentation
-	}
-
 	return &GitHubModuleMetadata{
 		Name:        repoData.Name,
 		FullName:    repoData.FullName,

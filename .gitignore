@@ -8,6 +8,9 @@ shiro
 shiro-runtime
 shiro-webhook
 webhook-server
+runtime
+data-processor
+hello-module
 
 # Test binary, built with `go test -c`
 *.test
