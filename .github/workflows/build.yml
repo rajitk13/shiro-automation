@@ -295,6 +295,7 @@ jobs:
           push: true
           build-args: |
             VERSION=${{ steps.meta.outputs.tag }}
+          provenance: false
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
@@ -310,6 +311,7 @@ jobs:
           push: true
           build-args: |
             VERSION=${{ steps.meta.outputs.tag }}
+          provenance: false
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-go
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}-go
