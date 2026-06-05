@@ -242,7 +242,7 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
-    needs: [ build, release, auto-release ]
+    needs: [ build, auto-release ]
     # Build/push the image only when the pipeline is healthy, after the release
     # job that produced the version tag. Reuses that exact tag so the binary
     # release and the Docker image always carry the same version.
@@ -250,7 +250,6 @@ jobs:
       always() &&
       needs.build.result == 'success' &&
       (needs.auto-release.result == 'success' ||
-       needs.release.result == 'success' ||
        github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
