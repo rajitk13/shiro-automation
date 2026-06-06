@@ -38,6 +38,7 @@ func InitCommand(args []string) {
 	dirs := []string{
 		".shiro",
 		".shiro/workflows",
+		".shiro/modules",
 		"modules",
 	}
 
@@ -91,7 +92,23 @@ models:
   #   type: openai
   #   model: "gpt-4"
   #   base_url: "https://api.openai.com/v1"
-  #   api_key: "{{env.OPENAI_API_KEY}}"`
+  #   api_key: "{{env.OPENAI_API_KEY}}"
+
+  # Gemini (Google AI Studio)
+  # gemini:
+  #   type: gemini
+  #   model: "gemini-1.5-pro"
+  #   api_key: "{{env.GEMINI_API_KEY}}"
+  #   api_type: "google-ai-studio"
+
+  # Gemini (Vertex AI)
+  # gemini-vertex:
+  #   type: gemini
+  #   model: "gemini-1.5-pro"
+  #   api_key: "{{env.GOOGLE_ACCESS_TOKEN}}"
+  #   api_type: "vertex-ai"
+  #   project_id: "{{env.GOOGLE_PROJECT_ID}}"
+  #   location: "us-central1"`
 
 	if err := os.WriteFile(".shiro/config.yaml", []byte(configContent), 0644); err != nil {
 		log.Fatalf("Failed to create config.yaml: %v", err)

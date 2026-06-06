@@ -8,7 +8,7 @@ Shiro is a production-ready Go-based workflow runtime that:
 - Runs inside existing CI runners (GitLab/Jenkins/GitHub Actions/K8s Jobs)
 - Executes ephemeral workflows with DAG-based scheduling
 - Supports reusable modules and integrations
-- Enables AI-assisted workflows with multiple provider support (Ollama, OpenAI, custom)
+- Enables AI-assisted workflows with multiple provider support (Ollama, OpenAI, Gemini, custom)
 - Minimizes always-on infrastructure
 
 ## Features
@@ -18,7 +18,7 @@ Shiro is a production-ready Go-based workflow runtime that:
 - **DAG Execution**: Topological sorting with dependency management
 - **Module System**: Pluggable architecture with GitHub marketplace integration
 - **Auto-Discovery**: Search and install modules from official GitHub repository
-- **AI Providers**: Support for Ollama, OpenAI, and custom endpoints
+- **AI Providers**: Support for Ollama, OpenAI, Gemini, and custom endpoints
 - **State Storage**: Modular backends (GitLab artifacts, filesystem, memory)
 - **GitLab Integration**: GitLab CI workflow support
 - **GitHub Integration**: GitHub Actions workflows support
@@ -182,9 +182,9 @@ The workflow:
 2. Sends diff to AI provider for code review
 3. Posts AI-generated comments to the MR using GitLab CI job token
 
-**Supported providers:** OpenAI, Ollama, Custom (configured interactively with `-i`)
+**Supported providers:** OpenAI, Ollama, Gemini, Custom (configured interactively with `-i`)
 
-**Interactive mode (-i):** Prompts for AI provider selection (OpenAI/Ollama/Custom) and configuration
+**Interactive mode (-i):** Prompts for AI provider selection (OpenAI/Ollama/Gemini/Custom) and configuration
 
 **Direct mode (-d):** Pass config values as flags: `-d provider=openai -d api_key=sk-... -d model=gpt-4`
 
@@ -693,6 +693,22 @@ models:
     model: "{{env.OPENAI_CUSTOM_MODEL}}"
     base_url: "{{env.OPENAI_CUSTOM_BASE_URL}}"
     api_key: "{{env.OPENAI_CUSTOM_API_KEY}}"
+
+  # Gemini (Google AI Studio)
+  gemini:
+    type: gemini
+    model: gemini-1.5-pro
+    api_key: "{{env.GEMINI_API_KEY}}"
+    api_type: "google-ai-studio"
+
+  # Gemini (Vertex AI)
+  gemini-vertex:
+    type: gemini
+    model: gemini-1.5-pro
+    api_key: "{{env.GOOGLE_ACCESS_TOKEN}}"
+    api_type: "vertex-ai"
+    project_id: "{{env.GOOGLE_PROJECT_ID}}"
+    location: "us-central1"
 ```
 
 ### Environment Variable Resolution

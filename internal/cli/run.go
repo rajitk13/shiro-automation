@@ -361,6 +361,37 @@ func registerAIProviders(modelConfig map[string]map[string]interface{}, logger *
 				SkipTLSVerify: skipTLSVerify,
 			}
 			provider, err = ai.NewOpenAIProvider(providerConfig)
+		case "gemini":
+			apiKey, ok := modelDef["api_key"].(string)
+			if !ok {
+				logger.Printf("Skipping model %s: missing api_key field", modelName)
+				continue
+			}
+			baseURL, _ := modelDef["base_url"].(string)
+			apiType := "google-ai-studio"
+			if apiTypeVal, ok := modelDef["api_type"].(string); ok {
+				apiType = apiTypeVal
+			}
+			metadata := make(map[string]interface{})
+			metadata["api_type"] = apiType
+			if apiType == "vertex-ai" {
+				projectID, _ := modelDef["project_id"].(string)
+				location, _ := modelDef["location"].(string)
+				if projectID != "" {
+					metadata["project_id"] = projectID
+				}
+				if location != "" {
+					metadata["location"] = location
+				}
+			}
+			providerConfig := &ai.ProviderConfig{
+				Type:     "gemini",
+				BaseURL:  baseURL,
+				APIKey:   apiKey,
+				Model:    defaultModel,
+				Metadata: metadata,
+			}
+			provider, err = ai.NewGeminiProvider(providerConfig)
 		default:
 			logger.Printf("Unknown provider type: %s", modelType)
 			continue

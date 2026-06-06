@@ -1,0 +1,18 @@
+{
+  "name": "workflow-with-retry",
+  "description": "Test workflow with retry configuration",
+  "steps": [
+    {
+      "id": "print-step",
+      "type": "print",
+      "config": {
+        "message": "test message with retry"
+      },
+      "retry": {
+        "max_attempts": 3,
+        "backoff": 2.0,
+        "initial_delay": 1000
+      }
+    }
+  ]
+}

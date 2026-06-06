@@ -1,0 +1,40 @@
+{
+  "name": "workflow-with-variables",
+  "description": "Test workflow with variable resolution",
+  "inputs": {
+    "test_input": {
+      "type": "string",
+      "default": "default_value"
+    }
+  },
+  "steps": [
+    {
+      "id": "print-env",
+      "type": "print",
+      "config": {
+        "message": "{{env.TEST_VAR}}"
+      }
+    },
+    {
+      "id": "print-input",
+      "type": "print",
+      "config": {
+        "message": "{{inputs.test_input}}"
+      }
+    },
+    {
+      "id": "first-step",
+      "type": "print",
+      "config": {
+        "message": "first output"
+      }
+    },
+    {
+      "id": "second-step",
+      "type": "print",
+      "config": {
+        "message": "{{steps.first-step.output}}"
+      }
+    }
+  ]
+}
