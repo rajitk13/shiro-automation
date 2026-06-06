@@ -262,7 +262,8 @@ func (c *Client) PostPRComment(ctx context.Context, owner, repo, prNumber, body 
 // ReviewComment represents a review comment on a specific line
 type ReviewComment struct {
 	Path     string `json:"path"`
-	Position int    `json:"position"`
+	Position int    `json:"position,omitempty"`
+	Line     int    `json:"line,omitempty"`
 	Body     string `json:"body"`
 }
 

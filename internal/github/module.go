@@ -255,9 +255,9 @@ func (m *GitHubModule) postInlineComments(ctx context.Context, step *workflow.St
 		}
 
 		reviewComments = append(reviewComments, ReviewComment{
-			Path:     comment.File,
-			Position: comment.Line,
-			Body:     comment.Comment,
+			Path: comment.File,
+			Line: comment.Line,
+			Body: comment.Comment,
 		})
 		postedCount++
 	}
