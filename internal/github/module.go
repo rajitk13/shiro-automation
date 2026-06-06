@@ -37,6 +37,8 @@ func (m *GitHubModule) Execute(ctx context.Context, wfStep *workflow.Step) (map[
 	}
 
 	switch operation {
+	case "get_diff":
+		return m.getDiff(ctx, wfStep)
 	case "post_comment":
 		return m.postComment(ctx, wfStep)
 	case "post_inline_comments":
@@ -54,7 +56,7 @@ func (m *GitHubModule) Metadata() modules.ModuleMetadata {
 		InputSchema: map[string]modules.SchemaField{
 			"operation": {
 				Type:        "string",
-				Description: "Operation to perform: post_comment, post_inline_comments",
+				Description: "Operation to perform: get_diff, post_comment, post_inline_comments",
 				Required:    true,
 			},
 			"body": {
@@ -136,6 +138,33 @@ func (m *GitHubModule) postComment(ctx context.Context, step *workflow.Step) (ma
 	return map[string]interface{}{
 		"success": true,
 		"message": "Comment posted successfully",
+	}, nil
+}
+
+// getDiff gets the diff for a pull request using GitHub API
+func (m *GitHubModule) getDiff(ctx context.Context, step *workflow.Step) (map[string]interface{}, error) {
+	owner := GetOwner()
+	repo := GetRepoName()
+	prNumber := GetPRNumber()
+
+	if owner == "" {
+		return nil, fmt.Errorf("GITHUB_REPOSITORY_OWNER is required")
+	}
+	if repo == "" {
+		return nil, fmt.Errorf("GITHUB_REPOSITORY is required")
+	}
+	if prNumber == "" {
+		return nil, fmt.Errorf("GITHUB_PR_NUMBER is required")
+	}
+
+	diff, err := m.client.GetPRDiff(ctx, owner, repo, prNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get PR diff: %w", err)
+	}
+
+	return map[string]interface{}{
+		"success": true,
+		"diff":    diff,
 	}, nil
 }
 
