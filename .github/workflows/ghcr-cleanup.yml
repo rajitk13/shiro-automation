@@ -1,0 +1,31 @@
+name: GHCR Cleanup
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # daily at 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      untagged_keep_latest:
+        description: 'Number of latest untagged manifests to keep (per image)'
+        required: false
+        default: '20'
+
+permissions:
+  packages: write
+
+jobs:
+  cleanup-slim:
+    runs-on: ubuntu-latest
+    name: Clean untagged slim image manifests
+    steps:
+      - name: Delete old untagged slim image manifests
+        uses: bots-house/ghcr-delete-image-action@v1.1.0
+        with:
+          owner: ${{ github.repository_owner }}
+          name: ${{ github.event.repository.name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Keep the latest 20 untagged manifests.
+          # Each multi-arch push creates 2 untagged platform manifests
+          # (linux/amd64 + linux/arm64), so 20 covers the last ~10 CI runs.
+          # This prevents deleting platform manifests of still-tagged images.
+          untagged-keep-latest: ${{ github.event.inputs.untagged_keep_latest || 20 }}
