@@ -233,16 +233,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Delete old tags and releases (keep latest 3)
+      - name: Delete old releases (keep latest 3)
         run: |
-          gh release list --limit 100 | tail -n +4 | awk '{print $3}' | xargs -I {} gh release delete {} --yes || true
-          gh tag list | tail -n +4 | xargs -I {} gh tag delete {} --force || true
+          gh release list --limit 100 | tail -n +4 | awk '{print $3}' | xargs -I {} gh release delete {} --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   docker:
     runs-on: ubuntu-latest
-    needs: [ build ]
+    needs: [ build, auto-release ]
     # Build/push the image whenever the main branch build is healthy. Do not
     # depend on release jobs here; GitLab CI needs the `latest` image even if
     # release publishing or cleanup fails.
@@ -265,7 +264,9 @@ jobs:
         id: meta
         run: |
           git fetch --tags
-          if TAG="$(git describe --tags --exact-match HEAD 2>/dev/null)"; then
+          if [ -n "${{ needs.auto-release.outputs.tag }}" ]; then
+            TAG="${{ needs.auto-release.outputs.tag }}"
+          elif TAG="$(git describe --tags --exact-match HEAD 2>/dev/null)"; then
             :
           else
             TAG="sha-${GITHUB_SHA::7}"
@@ -318,11 +319,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Keep last 3 Docker releases
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: ${{ github.event.repository.name }}
-          package-type: container
-          min-versions-to-keep: 3
-          delete-only-untagged-versions: true
+      - name: Repoint latest tags to verified version manifests
+        run: |
+          docker buildx imagetools create \
+            -t "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}"
+          docker buildx imagetools create \
+            -t "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-go" \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}-go"
+
+      - name: Verify published Docker manifests
+        run: |
+          docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}"
+          docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-go"
+          docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}-go"
+
+      # NOTE: Do NOT add a step here that deletes "untagged" GHCR package versions.
+      # In GHCR, each platform manifest (linux/amd64, linux/arm64) is stored as
+      # an untagged package version even though it is referenced by the multi-arch
+      # manifest list. Deleting untagged versions breaks multi-arch pulls on Linux.
 
