@@ -1,0 +1,62 @@
+name: 'Shiro Automation'
+description: 'Run Shiro workflows in GitHub Actions'
+branding:
+  icon: 'cpu'
+  color: 'blue'
+
+inputs:
+  workflow:
+    description: 'Path to workflow JSON file'
+    required: true
+    default: '.shiro/workflow.json'
+  config:
+    description: 'Path to config YAML file'
+    required: false
+    default: '.shiro/config.yaml'
+  shiro-dir:
+    description: 'Path to .shiro directory'
+    required: false
+    default: '.shiro'
+  state-store:
+    description: 'State storage backend (memory, filesystem, gitlab)'
+    required: false
+    default: 'memory'
+  fresh:
+    description: 'Start fresh (ignore existing state)'
+    required: false
+    default: 'false'
+  dry-run:
+    description: 'Dry run mode (validate without executing)'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download Shiro binary
+      shell: bash
+      run: |
+        ARCH=$(uname -m)
+        if [ "$ARCH" = "x86_64" ]; then
+          ARCH="amd64"
+        elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+          ARCH="arm64"
+        fi
+        
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        
+        echo "Downloading shiro-${OS}-${ARCH}"
+        curl -LOk "https://github.com/rajitk13/shiro-automation/releases/latest/download/shiro-${OS}-${ARCH}"
+        chmod +x "shiro-${OS}-${ARCH}"
+        echo "SHIRO_BINARY=$(pwd)/shiro-${OS}-${ARCH}" >> $GITHUB_ENV
+
+    - name: Run Shiro workflow
+      shell: bash
+      run: |
+        $SHIRO_BINARY run \
+          -workflow "${{ inputs.workflow }}" \
+          -config "${{ inputs.config }}" \
+          -shiro-dir "${{ inputs.shiro-dir }}" \
+          -state-store "${{ inputs.state-store }}" \
+          -fresh "${{ inputs.fresh }}" \
+          -dry-run "${{ inputs.dry-run }}"
