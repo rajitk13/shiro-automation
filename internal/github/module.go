@@ -23,14 +23,14 @@ func NewGitHubModule() *GitHubModule {
 	}
 }
 
-func init() {
-	modules.RegisterBuiltin("github", func() (interface{}, error) {
-		return NewGitHubModule(), nil
-	})
-}
+// Run executes a GitHub module step
+func (m *GitHubModule) Run(ctx context.Context, stepCtx interface{}, step interface{}) (map[string]interface{}, error) {
+	// Type assert to get the step
+	wfStep, ok := step.(workflow.Step)
+	if !ok {
+		return nil, fmt.Errorf("invalid step type")
+	}
 
-// Execute executes a GitHub module step
-func (m *GitHubModule) Execute(ctx context.Context, wfStep *workflow.Step) (map[string]interface{}, error) {
 	operation, ok := wfStep.Config["operation"].(string)
 	if !ok {
 		return nil, fmt.Errorf("operation is required")
@@ -38,11 +38,11 @@ func (m *GitHubModule) Execute(ctx context.Context, wfStep *workflow.Step) (map[
 
 	switch operation {
 	case "get_diff":
-		return m.getDiff(ctx, wfStep)
+		return m.getDiff(ctx, &wfStep)
 	case "post_comment":
-		return m.postComment(ctx, wfStep)
+		return m.postComment(ctx, &wfStep)
 	case "post_inline_comments":
-		return m.postInlineComments(ctx, wfStep)
+		return m.postInlineComments(ctx, &wfStep)
 	default:
 		return nil, fmt.Errorf("unknown operation: %s", operation)
 	}
