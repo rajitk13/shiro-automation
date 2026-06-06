@@ -258,3 +258,158 @@ func (c *Client) PostPRComment(ctx context.Context, owner, repo, prNumber, body 
 
 	return nil
 }
+
+// ReviewComment represents a review comment on a specific line
+type ReviewComment struct {
+	Path     string `json:"path"`
+	Position int    `json:"position"`
+	Body     string `json:"body"`
+}
+
+// PostReviewComment posts an inline review comment on a pull request
+func (c *Client) PostReviewComment(ctx context.Context, owner, repo, prNumber, body, path string, position int, commitID string) error {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%s/comments", c.baseURL, owner, repo, prNumber)
+
+	payload := map[string]interface{}{
+		"body":      body,
+		"path":      path,
+		"position":  position,
+		"commit_id": commitID,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if c.token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", c.token))
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}
+
+// GetPRReviewComments gets all review comments on a pull request
+func (c *Client) GetPRReviewComments(ctx context.Context, owner, repo, prNumber string) ([]map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%s/comments", c.baseURL, owner, repo, prNumber)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if c.token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", c.token))
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var comments []map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&comments); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return comments, nil
+}
+
+// CreateReview creates a full review with multiple comments
+func (c *Client) CreateReview(ctx context.Context, owner, repo, prNumber, body string, comments []ReviewComment, commitID string) error {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%s/reviews", c.baseURL, owner, repo, prNumber)
+
+	payload := map[string]interface{}{
+		"body":      body,
+		"comments":  comments,
+		"event":     "COMMENT",
+		"commit_id": commitID,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if c.token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", c.token))
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}
+
+// GetPRDiff gets the diff for a pull request
+func (c *Client) GetPRDiff(ctx context.Context, owner, repo, prNumber string) (string, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%s", c.baseURL, owner, repo, prNumber)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if c.token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", c.token))
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3.diff")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	diff, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read diff: %w", err)
+	}
+
+	return string(diff), nil
+}

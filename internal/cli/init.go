@@ -13,7 +13,7 @@ import (
 // InitCommand handles the project initialization command
 func InitCommand(args []string) {
 	flagSet := flag.NewFlagSet("init", flag.ExitOnError)
-	template := flagSet.String("template", "", "Template to use (code-review)")
+	template := flagSet.String("template", "", "Template to use (code-review, github-code-review)")
 	interactive := flagSet.Bool("i", false, "Interactive config setup")
 	directConfig := flagSet.Bool("d", false, "Direct config mode (pass config values)")
 	showHelp := flagSet.Bool("help", false, "Show help information")
@@ -205,7 +205,7 @@ func printInitHelp() {
 	fmt.Println("  shiro init [options]")
 	fmt.Println()
 	fmt.Println("Options:")
-	fmt.Println("  -template <name>  Template to use (code-review)")
+	fmt.Println("  -template <name>  Template to use (code-review, github-code-review)")
 	fmt.Println("  -i               Interactive config setup")
 	fmt.Println("  -d               Direct config mode (pass config values as -d key=value)")
 	fmt.Println("  -help            Show help message")

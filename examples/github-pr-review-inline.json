@@ -1,6 +1,6 @@
 {
-  "name": "github-pr-review",
-  "description": "AI-powered GitHub PR review workflow",
+  "name": "github-pr-review-inline",
+  "description": "AI-powered GitHub PR review with inline comments (text format)",
   "inputs": {
     "pr_number": "{{env.GITHUB_PR_NUMBER}}",
     "repository": "{{env.GITHUB_REPOSITORY}}",
@@ -35,18 +35,6 @@
         "body": "{{steps.review.content}}",
         "output_format": "text",
         "dedup": true
-      },
-      "depends_on": ["review"]
-    },
-    {
-      "id": "notify",
-      "type": "slack.notify",
-      "config": {
-        "webhook_url": "{{env.SLACK_WEBHOOK_URL}}",
-        "channel": "#code-review",
-        "message": "PR Review for {{inputs.repository}} PR #{{inputs.pr_number}}:\n\n{{steps.review.content}}",
-        "username": "Code Review Bot",
-        "icon_emoji": ":robot_face:"
       },
       "depends_on": ["review"]
     }

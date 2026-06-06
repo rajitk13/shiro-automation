@@ -64,4 +64,5 @@ func WriteFile(path, content string) error {
 
 func init() {
 	Register("code-review", NewCodeReviewTemplate())
+	Register("github-code-review", NewGitHubCodeReviewTemplate())
 }
