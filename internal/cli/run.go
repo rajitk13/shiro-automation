@@ -55,8 +55,7 @@ func RunCommand(args []string) {
 	}
 
 	if cfg.WorkflowFile == "" {
-		printRunHelp()
-		os.Exit(1)
+		log.Fatalf("No workflow file found. Please specify a workflow file with -workflow flag or ensure .shiro/workflow.json exists.")
 	}
 
 	logger := log.New(os.Stdout, "[Shiro] ", log.LstdFlags)
