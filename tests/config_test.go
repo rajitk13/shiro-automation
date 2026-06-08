@@ -39,8 +39,9 @@ func TestLoadConfigDefault(t *testing.T) {
 		t.Errorf("Expected default ShiroDir to be '.shiro', got '%s'", cfg.ShiroDir)
 	}
 
-	if cfg.StateStore == "" {
-		t.Error("Expected default StateStore to be set")
+	// StateStore is empty by default, set to gitlab in run.go if not configured
+	if cfg.StateStore != "" {
+		t.Errorf("Expected default StateStore to be empty, got '%s'", cfg.StateStore)
 	}
 }
 

@@ -152,14 +152,10 @@ func TestWorkflowStateStoreValidation(t *testing.T) {
 		t.Fatalf("Dry run failed: %v\nOutput: %s", err, string(output))
 	}
 
-	// Verify state store is shown
+	// Verify state store is NOT shown for default gitlab
 	outputStr := string(output)
-	if !strings.Contains(outputStr, "State Store") {
-		t.Error("Workflow validation should show state store configuration")
-	}
-
-	if !strings.Contains(outputStr, "gitlab") {
-		t.Error("Default state store should be gitlab")
+	if strings.Contains(outputStr, "State Store") {
+		t.Error("Default gitlab state store should not be shown in dry run")
 	}
 }
 
@@ -176,10 +172,10 @@ func TestWorkflowWithCustomStateStore(t *testing.T) {
 		t.Fatalf("Dry run failed: %v\nOutput: %s", err, string(output))
 	}
 
-	// Verify custom state store is shown
+	// Verify custom state store is shown when explicitly set
 	outputStr := string(output)
 	if !strings.Contains(outputStr, "State Store") {
-		t.Error("Workflow validation should show state store configuration")
+		t.Error("Explicitly set state store should be shown in dry run")
 	}
 
 	if !strings.Contains(outputStr, "memory") {

@@ -25,8 +25,6 @@ func TestDryRunWithValidWorkflow(t *testing.T) {
 		"Dry Run Mode",
 		"Workflow will be validated but not executed",
 		"Execution Plan",
-		"Environment Variables",
-		"State Store",
 		"Dry Run Complete",
 	}
 
@@ -34,6 +32,11 @@ func TestDryRunWithValidWorkflow(t *testing.T) {
 		if !strings.Contains(outputStr, section) {
 			t.Errorf("Dry run output missing section '%s'", section)
 		}
+	}
+
+	// State Store section should NOT appear for simple workflows (default gitlab/memory)
+	if strings.Contains(outputStr, "State Store") {
+		t.Error("Dry run should not show State Store for default configuration")
 	}
 }
 
@@ -119,5 +122,115 @@ func TestDryRunWithNonExistentWorkflow(t *testing.T) {
 	outputStr := string(output)
 	if !strings.Contains(outputStr, "no such file") && !strings.Contains(outputStr, "not found") {
 		t.Errorf("Expected file not found error, got: %s", outputStr)
+	}
+}
+
+func TestDryRunWithGitHubWorkflow(t *testing.T) {
+	t.Parallel()
+
+	shiro := buildShiroBinary(t)
+
+	// Run dry-run with GitHub Actions workflow
+	cmd := exec.Command(shiro, "run", "-dry-run", "-workflow", "tests/fixtures/valid-github-actions-workflow.json")
+	cmd.Dir = repoRoot(t)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Dry run failed: %v\nOutput: %s", err, string(output))
+	}
+
+	// Verify GitHub environment variables are shown
+	outputStr := string(output)
+	expectedVars := []string{
+		"GITHUB_TOKEN",
+		"GITHUB_REPOSITORY",
+		"GITHUB_PR_NUMBER",
+		"GITHUB_SHA",
+	}
+
+	for _, varName := range expectedVars {
+		if !strings.Contains(outputStr, varName) {
+			t.Errorf("Dry run should show GitHub env var '%s'", varName)
+		}
+	}
+
+	// Verify GitLab variables are NOT shown
+	gitlabVars := []string{
+		"CI_PROJECT_ID",
+		"CI_MERGE_REQUEST_IID",
+		"CI_COMMIT_SHA",
+	}
+
+	for _, varName := range gitlabVars {
+		if strings.Contains(outputStr, varName) {
+			t.Errorf("Dry run should NOT show GitLab env var '%s' for GitHub workflow", varName)
+		}
+	}
+}
+
+func TestDryRunWithGitLabWorkflow(t *testing.T) {
+	t.Parallel()
+
+	shiro := buildShiroBinary(t)
+
+	// Run dry-run with GitLab CI workflow
+	cmd := exec.Command(shiro, "run", "-dry-run", "-workflow", "tests/fixtures/valid-gitlab-ci-workflow.json")
+	cmd.Dir = repoRoot(t)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Dry run failed: %v\nOutput: %s", err, string(output))
+	}
+
+	// Verify GitLab environment variables are shown
+	outputStr := string(output)
+	expectedVars := []string{
+		"CI_PROJECT_ID",
+		"CI_MERGE_REQUEST_IID",
+		"CI_COMMIT_SHA",
+		"CI_COMMIT_REF_NAME",
+		"CI_SERVER_URL",
+	}
+
+	for _, varName := range expectedVars {
+		if !strings.Contains(outputStr, varName) {
+			t.Errorf("Dry run should show GitLab env var '%s'", varName)
+		}
+	}
+
+	// Verify GitHub variables are NOT shown
+	ghVars := []string{
+		"GITHUB_TOKEN",
+		"GITHUB_REPOSITORY",
+		"GITHUB_PR_NUMBER",
+	}
+
+	for _, varName := range ghVars {
+		if strings.Contains(outputStr, varName) {
+			t.Errorf("Dry run should NOT show GitHub env var '%s' for GitLab workflow", varName)
+		}
+	}
+}
+
+func TestDryRunWithNoCIModules(t *testing.T) {
+	t.Parallel()
+
+	shiro := buildShiroBinary(t)
+
+	// Run dry-run with simple print workflow (no CI modules)
+	cmd := exec.Command(shiro, "run", "-dry-run", "-workflow", "tests/fixtures/simple-print-workflow.json")
+	cmd.Dir = repoRoot(t)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Dry run failed: %v\nOutput: %s", err, string(output))
+	}
+
+	// Verify Environment Variables section is NOT shown
+	outputStr := string(output)
+	if strings.Contains(outputStr, "Environment Variables") {
+		t.Error("Dry run should NOT show Environment Variables section for workflows without CI modules")
+	}
+
+	// Verify State Store section is NOT shown
+	if strings.Contains(outputStr, "State Store") {
+		t.Error("Dry run should NOT show State Store for default configuration")
 	}
 }

@@ -47,6 +47,8 @@ func RunCommand(args []string) {
 	}
 	if *stateStoreType != "" {
 		cfg.StateStore = *stateStoreType
+	} else if cfg.StateStore == "" {
+		cfg.StateStore = "gitlab" // Default to gitlab if not configured
 	}
 
 	if *showHelp {
@@ -96,57 +98,8 @@ func RunCommand(args []string) {
 		// Load environment variables for dry-run
 		env := loadEnvironment()
 
-		// Create module registry for validation
-		registry := modules.NewRegistry()
-		if err := registerBuiltInModules(registry); err != nil {
-			log.Fatalf("Failed to register modules: %v", err)
-		}
-
-		// Discover and register subprocess plugin modules
-		modules.DiscoverSubprocessModules(registry, cfg.ShiroDir)
-
-		// Get execution order
-		execOrder, err := runtime.GetExecutionOrder(wf)
-		if err != nil {
-			log.Fatalf("Failed to determine execution order: %v", err)
-		}
-
-		// Print execution plan
-		for i, stepID := range execOrder {
-			step := wf.GetStepByID(stepID)
-			if step == nil {
-				continue
-			}
-			logger.Printf("\n%d. Step: %s", i+1, step.ID)
-			logger.Printf("   Type: %s", step.Type)
-			if len(step.DependsOn) > 0 {
-				logger.Printf("   Depends On: %v", step.DependsOn)
-			}
-			if len(step.Config) > 0 {
-				logger.Printf("   Config: %v keys", len(step.Config))
-			}
-			if step.Quiet {
-				logger.Printf("   Quiet: true")
-			}
-		}
-
-		logger.Println("\n--- Environment Variables ---")
-		// Show CI-specific variables
-		ciVars := []string{"CI_PROJECT_ID", "CI_MERGE_REQUEST_IID", "CI_COMMIT_SHA", "CI_COMMIT_REF_NAME", "CI_SERVER_URL"}
-		for _, varName := range ciVars {
-			if val, ok := env[varName]; ok {
-				logger.Printf("%s: %s", varName, val)
-			} else {
-				logger.Printf("%s: (not set)", varName)
-			}
-		}
-
-		logger.Println("\n--- State Store ---")
-		logger.Printf("Type: %s", cfg.StateStore)
-
-		logger.Println("\n=== Dry Run Complete ===")
-		logger.Println("Workflow is valid and ready to execute")
-		os.Exit(0)
+		// Print dry run plan
+		PrintDryRunPlan(wf, cfg, env, logger)
 	}
 
 	// Load model configuration

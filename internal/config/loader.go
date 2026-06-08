@@ -27,7 +27,7 @@ type ModelConfig struct {
 func LoadConfig(shiroDir string) (*Config, error) {
 	cfg := &Config{
 		ShiroDir:   shiroDir,
-		StateStore: "gitlab", // Default state store
+		StateStore: "", // Empty default - will be set to gitlab if not configured
 	}
 
 	// Auto-detect workflow file
