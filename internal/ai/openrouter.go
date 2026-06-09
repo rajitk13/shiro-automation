@@ -23,12 +23,6 @@ func NewOpenRouterProvider(config *ProviderConfig) (*OpenRouterProvider, error) 
 		return nil, fmt.Errorf("API key is required for OpenRouter provider")
 	}
 
-	// Initialize the underlying OpenAI-compatible provider
-	openaiProvider, err := NewOpenAIProvider(config)
-	if err != nil {
-		return nil, err
-	}
-
 	// Add OpenRouter-specific headers if not already set
 	if config.Headers == nil {
 		config.Headers = make(map[string]string)
@@ -39,6 +33,12 @@ func NewOpenRouterProvider(config *ProviderConfig) (*OpenRouterProvider, error) 
 	}
 	if _, ok := config.Headers["X-Title"]; !ok {
 		config.Headers["X-Title"] = "Shiro Automation"
+	}
+
+	// Initialize the underlying OpenAI-compatible provider
+	openaiProvider, err := NewOpenAIProvider(config)
+	if err != nil {
+		return nil, err
 	}
 
 	return &OpenRouterProvider{
