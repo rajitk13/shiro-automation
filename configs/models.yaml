@@ -30,3 +30,16 @@ models:
     model: "{{env.OPENAI_CUSTOM_MODEL}}"
     base_url: "{{env.OPENAI_CUSTOM_BASE_URL}}"
     api_key: "{{env.OPENAI_CUSTOM_API_KEY}}"
+
+  # OpenRouter - access to many models through a single API
+  openrouter:
+    provider: openrouter
+    model: anthropic/claude-3.5-sonnet
+    base_url: https://openrouter.ai/api/v1
+    api_key: "{{env.OPENROUTER_API_KEY}}"
+
+  openrouter-gpt4:
+    provider: openrouter
+    model: openai/gpt-4-turbo
+    base_url: https://openrouter.ai/api/v1
+    api_key: "{{env.OPENROUTER_API_KEY}}"

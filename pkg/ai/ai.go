@@ -32,6 +32,11 @@ func NewGeminiProvider(config *ProviderConfig) (Provider, error) {
 	return aiprovider.NewGeminiProvider(config)
 }
 
+// NewOpenRouterProvider creates a new OpenRouter provider
+func NewOpenRouterProvider(config *ProviderConfig) (Provider, error) {
+	return aiprovider.NewOpenRouterProvider(config)
+}
+
 // AIModule implements the ai.generate module
 type AIModule struct {
 	providers     map[string]Provider

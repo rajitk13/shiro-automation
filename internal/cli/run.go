@@ -344,6 +344,28 @@ func registerAIProviders(modelConfig map[string]map[string]interface{}, logger *
 				Metadata: metadata,
 			}
 			provider, err = ai.NewGeminiProvider(providerConfig)
+		case "openrouter":
+			baseURL, ok := modelDef["base_url"].(string)
+			if !ok {
+				baseURL = "" // Will use default
+			}
+			apiKey, ok := modelDef["api_key"].(string)
+			if !ok {
+				logger.Printf("Skipping model %s: missing api_key field", modelName)
+				continue
+			}
+			skipTLSVerify := false
+			if skipTLS, ok := modelDef["skip_tls_verify"].(bool); ok {
+				skipTLSVerify = skipTLS
+			}
+			providerConfig := &ai.ProviderConfig{
+				Type:          "openrouter",
+				BaseURL:       baseURL,
+				APIKey:        apiKey,
+				Model:         defaultModel,
+				SkipTLSVerify: skipTLSVerify,
+			}
+			provider, err = ai.NewOpenRouterProvider(providerConfig)
 		default:
 			logger.Printf("Unknown provider type: %s", modelType)
 			continue
