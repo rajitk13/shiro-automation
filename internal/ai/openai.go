@@ -29,9 +29,14 @@ func NewOpenAIProvider(config *ProviderConfig) (*OpenAIProvider, error) {
 		return nil, fmt.Errorf("API key is required for OpenAI provider")
 	}
 
+	// Check if API key is still a template (not resolved)
+	if strings.HasPrefix(config.APIKey, "{{env.") && strings.HasSuffix(config.APIKey, "}}") {
+		return nil, fmt.Errorf("API key template %s was not resolved - ensure the environment variable is set", config.APIKey)
+	}
+
 	timeout := time.Duration(config.Timeout) * time.Second
 	if timeout == 0 {
-		timeout = 30 * time.Second
+		timeout = 120 * time.Second // Increased default timeout for slower models
 	}
 
 	// Create HTTP client with optional TLS skip
@@ -104,6 +109,12 @@ func (p *OpenAIProvider) Generate(ctx context.Context, req *GenerateRequest) (*G
 		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
 	}
 
+	// Read response body with size limit
+	body, err = io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024)) // 50MB limit
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
 	// Parse response
 	var openaiResp struct {
 		Choices []struct {
@@ -115,7 +126,7 @@ func (p *OpenAIProvider) Generate(ctx context.Context, req *GenerateRequest) (*G
 		Usage *Usage `json:"usage"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&openaiResp); err != nil {
+	if err := json.Unmarshal(body, &openaiResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
